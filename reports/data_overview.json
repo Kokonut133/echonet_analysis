@@ -1,0 +1,287 @@
+[
+  {
+    "filename": "EchoNext_no_split_tabular_features.npy",
+    "kind": "npy",
+    "description": "Precomputed tabular feature matrix for baseline models.",
+    "shape": [
+      17457,
+      7
+    ],
+    "dtype": "float64",
+    "size": "954.68 KB",
+    "ndim": 2,
+    "preview": "row   feature_000 feature_001 feature_002 feature_003 feature_004 feature_005 feature_006\n----- ----------- ----------- ----------- ----------- ----------- ----------- -----------\n0.000 1.000       -1.141      0.227       -0.028      0.123       -0.037      -0.695     \n1.000 0.000       1.795       -1.490      -0.815      0.851       -0.494      -0.072     \n2.000 0.000       -0.517      0.325       0.017       0.608       -0.860      0.402      \n3.000 1.000       -0.517      0.570       0.130       -0.119      -0.403      0.028      \n4.000 0.000       -0.079      1.109       0.377       -0.015      -0.220      0.627      ",
+    "sample_stats": {
+      "sampled_values": 448,
+      "min": -2.475,
+      "max": 4.473,
+      "mean": 0.029,
+      "std": 0.935,
+      "p01": -2.299,
+      "p50": 0.0,
+      "p99": 2.606
+    }
+  },
+  {
+    "filename": "EchoNext_no_split_waveforms.npy",
+    "kind": "npy",
+    "description": "Full unsplit ECG waveform array.",
+    "shape": [
+      17457,
+      1,
+      2500,
+      12
+    ],
+    "dtype": "float64",
+    "size": "3.90 GB",
+    "ndim": 4,
+    "preview": "record shape         min    max   mean   std  \n------ ------------- ------ ----- ------ -----\n0      [1, 2500, 12] -0.310 0.246 -0.036 0.108\n1      [1, 2500, 12] -0.326 0.246 -0.040 0.110\n2      [1, 2500, 12] -0.195 0.198 -0.039 0.106\n3      [1, 2500, 12] -0.246 0.273 -0.039 0.108\n4      [1, 2500, 12] -0.215 0.213 -0.039 0.108\n5      [1, 2500, 12] -0.192 0.208 -0.037 0.107\n6      [1, 2500, 12] -0.368 0.200 -0.040 0.108\n7      [1, 2500, 12] -0.199 0.215 -0.039 0.106\n8      [1, 2500, 12] -0.274 0.291 -0.037 0.113\n9      [1, 2500, 12] -0.275 0.254 -0.039 0.109",
+    "sample_stats": {
+      "sampled_values": 1920000,
+      "min": -0.432,
+      "max": 0.33,
+      "mean": -0.039,
+      "std": 0.109,
+      "p01": -0.187,
+      "p50": -0.071,
+      "p99": 0.192
+    }
+  },
+  {
+    "filename": "EchoNext_test_tabular_features.npy",
+    "kind": "npy",
+    "description": "Precomputed tabular feature matrix for baseline models.",
+    "shape": [
+      5442,
+      7
+    ],
+    "dtype": "float64",
+    "size": "297.61 KB",
+    "ndim": 2,
+    "preview": "row   feature_000 feature_001 feature_002 feature_003 feature_004 feature_005 feature_006\n----- ----------- ----------- ----------- ----------- ----------- ----------- -----------\n0.000 1.000       0.920       0.619       0.152       0.851       0.054       1.599      \n1.000 1.000       0.858       -0.754      -0.478      -0.119      0.969       -0.546     \n2.000 0.000       -0.891      1.796       0.693       0.227       -1.226      -0.795     \n3.000 1.000       0.046       1.011       0.332       0.885       0.237       0.377      \n4.000 0.000       0.670       -0.117      -0.185      -0.015      -1.134      -0.596     ",
+    "sample_stats": {
+      "sampled_values": 448,
+      "min": -2.716,
+      "max": 7.354,
+      "mean": 0.057,
+      "std": 1.1,
+      "p01": -2.475,
+      "p50": 0.0,
+      "p99": 3.372
+    }
+  },
+  {
+    "filename": "EchoNext_test_waveforms.npy",
+    "kind": "npy",
+    "description": "Test split ECG waveforms.",
+    "shape": [
+      5442,
+      1,
+      2500,
+      12
+    ],
+    "dtype": "float64",
+    "size": "1.22 GB",
+    "ndim": 4,
+    "preview": "record shape         min     max   mean   std  \n------ ------------- ------- ----- ------ -----\n0      [1, 2500, 12] -6.376  5.899 -0.126 0.913\n1      [1, 2500, 12] -9.859  8.613 0.058  1.469\n2      [1, 2500, 12] -9.661  6.370 -0.014 0.963\n3      [1, 2500, 12] -7.537  9.327 -0.063 2.024\n4      [1, 2500, 12] -7.802  4.637 -0.011 0.599\n5      [1, 2500, 12] -4.750  5.056 -0.021 0.569\n6      [1, 2500, 12] -3.590  2.964 0.015  0.521\n7      [1, 2500, 12] -6.093  8.945 0.086  1.171\n8      [1, 2500, 12] -6.636  5.713 -0.076 0.863\n9      [1, 2500, 12] -10.715 9.847 0.019  1.581",
+    "sample_stats": {
+      "sampled_values": 1920000,
+      "min": -10.715,
+      "max": 9.992,
+      "mean": 0.011,
+      "std": 0.951,
+      "p01": -2.959,
+      "p50": -0.043,
+      "p99": 3.336
+    }
+  },
+  {
+    "filename": "EchoNext_train_tabular_features.npy",
+    "kind": "npy",
+    "description": "Precomputed tabular feature matrix for baseline models.",
+    "shape": [
+      72475,
+      7
+    ],
+    "dtype": "float64",
+    "size": "3.87 MB",
+    "ndim": 2,
+    "preview": "row   feature_000 feature_001 feature_002 feature_003 feature_004 feature_005 feature_006\n----- ----------- ----------- ----------- ----------- ----------- ----------- -----------\n0.000 1.000       1.670       1.649       0.625       0.331       0.969       0.252      \n1.000 0.000       0.483       0.766       0.220       -0.258      -0.951      -0.097     \n2.000 1.000       -2.453      0.129       -0.073      0.019       -0.494      0.801      \n3.000 1.000       0.545       -0.754      -0.478      -0.119      -0.677      -0.646     \n4.000 1.000       -0.454      0.325       0.085       -2.475      4.261       3.221      ",
+    "sample_stats": {
+      "sampled_values": 448,
+      "min": -5.958,
+      "max": 5.989,
+      "mean": 0.178,
+      "std": 0.965,
+      "p01": -2.207,
+      "p50": 0.082,
+      "p99": 2.338
+    }
+  },
+  {
+    "filename": "EchoNext_train_waveforms.npy",
+    "kind": "npy",
+    "description": "Training split ECG waveforms.",
+    "shape": [
+      72475,
+      1,
+      2500,
+      12
+    ],
+    "dtype": "float64",
+    "size": "16.20 GB",
+    "ndim": 4,
+    "preview": "record shape         min    max   mean   std  \n------ ------------- ------ ----- ------ -----\n0      [1, 2500, 12] -4.570 4.250 -0.002 0.926\n1      [1, 2500, 12] -5.959 6.308 0.006  0.592\n2      [1, 2500, 12] -8.608 9.008 0.055  1.085\n3      [1, 2500, 12] -4.017 2.978 -0.001 0.430\n4      [1, 2500, 12] -3.002 4.912 -0.027 0.617\n5      [1, 2500, 12] -9.758 7.621 -0.022 0.484\n6      [1, 2500, 12] -7.485 8.945 -0.022 0.901\n7      [1, 2500, 12] -7.863 8.740 -0.041 0.881\n8      [1, 2500, 12] -5.497 7.703 0.080  0.693\n9      [1, 2500, 12] -7.399 8.112 -0.067 0.853",
+    "sample_stats": {
+      "sampled_values": 1920000,
+      "min": -10.715,
+      "max": 9.992,
+      "mean": -0.013,
+      "std": 0.97,
+      "p01": -3.179,
+      "p50": -0.044,
+      "p99": 3.362
+    }
+  },
+  {
+    "filename": "EchoNext_val_tabular_features.npy",
+    "kind": "npy",
+    "description": "Precomputed tabular feature matrix for baseline models.",
+    "shape": [
+      4626,
+      7
+    ],
+    "dtype": "float64",
+    "size": "252.98 KB",
+    "ndim": 2,
+    "preview": "row   feature_000 feature_001 feature_002 feature_003 feature_004 feature_005 feature_006\n----- ----------- ----------- ----------- ----------- ----------- ----------- -----------\n0.000 1.000       1.170       -0.362      -0.298      0.539       0.054       0.427      \n1.000 0.000       -0.517      0.962       0.310       0.331       -1.409      -2.167     \n2.000 0.000       -1.828      1.208       0.422       -0.292      -1.317      -0.870     \n3.000 0.000       -0.079      0.766       0.220       0.054       -0.586      -0.496     \n4.000 1.000       1.482       0.668       0.175       0.574       -0.220      0.527      ",
+    "sample_stats": {
+      "sampled_values": 448,
+      "min": -2.475,
+      "max": 4.352,
+      "mean": 0.072,
+      "std": 0.958,
+      "p01": -2.475,
+      "p50": 0.0,
+      "p99": 2.685
+    }
+  },
+  {
+    "filename": "EchoNext_val_waveforms.npy",
+    "kind": "npy",
+    "description": "Validation split ECG waveforms.",
+    "shape": [
+      4626,
+      1,
+      2500,
+      12
+    ],
+    "dtype": "float64",
+    "size": "1.03 GB",
+    "ndim": 4,
+    "preview": "record shape         min    max   mean   std  \n------ ------------- ------ ----- ------ -----\n0      [1, 2500, 12] -5.372 7.242 0.021  0.745\n1      [1, 2500, 12] -3.737 4.256 -0.015 0.455\n2      [1, 2500, 12] -5.177 5.088 -0.025 0.545\n3      [1, 2500, 12] -8.460 9.847 0.007  1.191\n4      [1, 2500, 12] -9.758 7.181 -0.003 1.277\n5      [1, 2500, 12] -7.697 8.369 0.051  0.815\n6      [1, 2500, 12] -7.185 7.912 -0.017 0.891\n7      [1, 2500, 12] -5.941 7.172 0.029  0.774\n8      [1, 2500, 12] -6.269 4.103 -0.036 0.923\n9      [1, 2500, 12] -9.057 9.847 -0.062 0.889",
+    "sample_stats": {
+      "sampled_values": 1920000,
+      "min": -10.715,
+      "max": 9.992,
+      "mean": 0.016,
+      "std": 1.059,
+      "p01": -3.506,
+      "p50": -0.037,
+      "p99": 3.875
+    }
+  },
+  {
+    "filename": "echonext_metadata_100k.csv",
+    "kind": "csv",
+    "description": "Main metadata table with record IDs, demographics, ECG measurements, and labels.",
+    "shape": [
+      100000,
+      39
+    ],
+    "columns": [
+      "Unnamed: 0",
+      "ecg_key",
+      "patient_key",
+      "age_at_ecg",
+      "sex",
+      "acquisition_year",
+      "location_setting",
+      "race_ethnicity",
+      "most_recent_ecg",
+      "ventricular_rate",
+      "atrial_rate",
+      "pr_interval",
+      "qrs_duration",
+      "qt_corrected",
+      "lvef_lte_45_flag",
+      "lvwt_gte_13_flag",
+      "aortic_stenosis_moderate_or_greater_flag",
+      "aortic_regurgitation_moderate_or_greater_flag",
+      "mitral_regurgitation_moderate_or_greater_flag",
+      "tricuspid_regurgitation_moderate_or_greater_flag",
+      "pulmonary_regurgitation_moderate_or_greater_flag",
+      "rv_systolic_dysfunction_moderate_or_greater_flag",
+      "pericardial_effusion_moderate_large_flag",
+      "pasp_gte_45_flag",
+      "tr_max_gte_32_flag",
+      "shd_moderate_or_greater_flag",
+      "aortic_stenosis_value",
+      "aortic_regurgitation_value",
+      "mitral_regurgitation_value",
+      "tricuspid_regurgitation_value",
+      "pulmonary_regurgitation_value",
+      "rv_systolic_function_value",
+      "pericardial_effusion_value",
+      "ivs_measurement",
+      "lvpw_measurement",
+      "pasp_value",
+      "tr_max_velocity_value",
+      "lvef_value",
+      "split"
+    ],
+    "dtypes": {
+      "Unnamed: 0": "int64",
+      "ecg_key": "int64",
+      "patient_key": "int64",
+      "age_at_ecg": "int64",
+      "sex": "str",
+      "acquisition_year": "int64",
+      "location_setting": "str",
+      "race_ethnicity": "str",
+      "most_recent_ecg": "int64",
+      "ventricular_rate": "float64",
+      "atrial_rate": "float64",
+      "pr_interval": "float64",
+      "qrs_duration": "float64",
+      "qt_corrected": "float64",
+      "lvef_lte_45_flag": "int64",
+      "lvwt_gte_13_flag": "int64",
+      "aortic_stenosis_moderate_or_greater_flag": "int64",
+      "aortic_regurgitation_moderate_or_greater_flag": "int64",
+      "mitral_regurgitation_moderate_or_greater_flag": "int64",
+      "tricuspid_regurgitation_moderate_or_greater_flag": "int64",
+      "pulmonary_regurgitation_moderate_or_greater_flag": "int64",
+      "rv_systolic_dysfunction_moderate_or_greater_flag": "int64",
+      "pericardial_effusion_moderate_large_flag": "int64",
+      "pasp_gte_45_flag": "int64",
+      "tr_max_gte_32_flag": "int64",
+      "shd_moderate_or_greater_flag": "int64",
+      "aortic_stenosis_value": "str",
+      "aortic_regurgitation_value": "str",
+      "mitral_regurgitation_value": "str",
+      "tricuspid_regurgitation_value": "str",
+      "pulmonary_regurgitation_value": "str",
+      "rv_systolic_function_value": "str",
+      "pericardial_effusion_value": "str",
+      "ivs_measurement": "float64",
+      "lvpw_measurement": "float64",
+      "pasp_value": "float64",
+      "tr_max_velocity_value": "float64",
+      "lvef_value": "float64",
+      "split": "str"
+    },
+    "head_preview": "Unnamed: 0 ecg_key      patient_key    age_at_ecg sex          acquisition_year location_setting                         race_ethnicity most_recent_ecg ventricular_rate atrial_rate pr_interval\n---------- ------------ -------------- ---------- ------------ ---------------- ---------------------------------------- -------------- --------------- ---------------- ----------- -----------\nint64      int64        int64          int64      str          int64            str                                      str            int64           float64          float64     float64    \n0          8520052      902618160      88         male         2014             emergency                                other          1               117.000          117.000     162.000    \n1          7283576      4764241080     69         female       2019             inpatient                                black          0               99.000           99.000      128.000    \n2          8769869      4214459612     22         male         2017             inpatient                                white          0               86.000           86.000      144.000    \n3          6379904      6205191619     70         male         2022             emergency                                hispanic       0               68.000           68.000      136.000    \n4          9619545      8380688329     54         male         2013             inpatient                                other          0               90.000           93.000                 \n\n(showing first 12 of 39 columns)",
+    "column_metadata": "             Unnamed: 0 ecg_key      patient_key    age_at_ecg sex          acquisition_year location_setting                         race_ethnicity most_recent_ecg ventricular_rate atrial_rate pr_interval\n------------ ---------- ------------ -------------- ---------- ------------ ---------------- ---------------------------------------- -------------- --------------- ---------------- ----------- -----------\nmissing_%    0.000      0.000        0.000          0.000      0.000        0.000            0.000                                    0.000          0.000           0.000            0.613       10.369     \nunique_count                                                   2                             4                                                       2                                                       \nvalues                                                         male, female                  emergency, inpatient, outpatient, pro...                1, 0                                                    \ncount        100000.000 100000.000   100000.000     100000.000              100000.000                                                               100000.000      100000.000       99387.000   89631.000  \nmean         49999.500  8773789.553  4990837448.395 61.179                  2016.122                                                                 0.363           83.573           89.919      159.617    \nstd          28867.658  1516726.586  2883732071.406 16.077                  3.857                                                                    0.481           20.420           43.927      32.524     \nmin          0.000      3632711.000  146550.000     18.000                  2008.000                                                                 0.000           2.000            0.000       30.000     \n25%          24999.750  7688689.750  2476572135.000 51.000                  2013.000                                                                 0.000           69.000           69.000      138.000    \n50%          49999.500  8827948.000  4980671822.000 63.000                  2016.000                                                                 0.000           81.000           82.000      154.000    \n75%          74999.250  10013516.000 7507247599.000 73.000                  2020.000                                                                 1.000           95.000           97.000      174.000    \nmax          99999.000  11280435.000 9999852630.000 90.000                  2022.000                                                                 1.000           223.000          576.000     544.000    "
+  }
+]
