@@ -25,6 +25,16 @@
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "python": "${workspaceFolder}/.venv/bin/python"
+        },
+        {
+            "name": "baseline_demographic_predictor",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/mnt/c/Users/chris/Desktop/stuff/projects/2026/echonet_analysis/scripts/baseline_demographic_predictor.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/.venv/bin/python"
         }
     ]
 }
