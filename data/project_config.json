@@ -1,0 +1,80 @@
+{
+  "dataset": {
+    "subdir": "echonext-a-dataset-for-detecting-echocardiogram-confirmed-structural-heart-disease-from-ecgs-1.1.0",
+    "metadata_file": "echonext_metadata_100k.csv",
+    "waveform_file_pattern": "EchoNext_{split}_waveforms.npy",
+    "tabular_file_pattern": "EchoNext_{split}_tabular_features.npy",
+    "splits": ["train", "val", "test", "no_split"]
+  },
+
+  "ecg": {
+    "sample_rate_hz": 250,
+    "n_leads": 12,
+    "signal_length_samples": 2500,
+    "lead_names": ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
+  },
+
+  "features": {
+    "demographic":            ["age_at_ecg", "sex", "race_ethnicity", "location_setting"],
+    "demographic_numeric":    ["age_at_ecg"],
+    "demographic_categorical": ["sex", "race_ethnicity", "location_setting"],
+    "tabular_ecg":            ["ventricular_rate", "atrial_rate", "pr_interval", "qrs_duration", "qt_corrected", "age_at_ecg"]
+  },
+
+  "targets": [
+    "shd_moderate_or_greater_flag",
+    "lvef_lte_45_flag",
+    "lvwt_gte_13_flag",
+    "aortic_stenosis_moderate_or_greater_flag",
+    "aortic_regurgitation_moderate_or_greater_flag",
+    "mitral_regurgitation_moderate_or_greater_flag",
+    "tricuspid_regurgitation_moderate_or_greater_flag",
+    "pulmonary_regurgitation_moderate_or_greater_flag",
+    "rv_systolic_dysfunction_moderate_or_greater_flag",
+    "pericardial_effusion_moderate_large_flag",
+    "pasp_gte_45_flag",
+    "tr_max_gte_32_flag"
+  ],
+
+  "output": {
+    "reports_dir":           "reports",
+    "checkpoints_dir":       "checkpoints",
+    "extracted_features_dir": "data/extracted_features",
+    "feature_cache_dir":     "data/feature_cache"
+  },
+
+  "training": {
+    "cnn": {
+      "n_epochs":           50,
+      "batch_size":         64,
+      "learning_rate":      0.001,
+      "weight_decay":       0.0001,
+      "patience":           10,
+      "lr_reduce_factor":   0.5,
+      "lr_reduce_patience": 5,
+      "num_workers":        4,
+      "dropout":            0.3
+    },
+    "sklearn": {
+      "random_seed": 42,
+      "test_size":   0.2,
+      "random_forest": {
+        "n_estimators":    300,
+        "min_samples_leaf": 5
+      },
+      "gradient_boosting": {
+        "n_estimators":  150,
+        "max_depth":     4,
+        "learning_rate": 0.1,
+        "subsample":     0.8
+      },
+      "logistic_regression": {
+        "max_iter": 2000,
+        "solver":   "saga"
+      }
+    },
+    "waveform_extraction": {
+      "batch_size": 2000
+    }
+  }
+}

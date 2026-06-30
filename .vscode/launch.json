@@ -1,36 +1,61 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
-    
         {
-            "name": "generate_overview",
+            "name": "1 · explore — generate_overview",
             "type": "debugpy",
             "request": "launch",
-            "program": "/mnt/c/Users/chris/Desktop/stuff/projects/2026/echonet_analysis/scripts/generate_overview.py",
+            "program": "${workspaceFolder}/scripts/1_explore/generate_overview.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "python": "${workspaceFolder}/.venv/bin/python"
         },
         {
-            "name": "echonext_data_summarization",
+            "name": "2 · preprocess — extract_waveform_features",
             "type": "debugpy",
             "request": "launch",
-            "program": "/mnt/c/Users/chris/Desktop/stuff/projects/2026/echonet_analysis/scripts/echonext_data_summarization.py",
+            "program": "${workspaceFolder}/scripts/2_preprocess/extract_waveform_features.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
             "python": "${workspaceFolder}/.venv/bin/python"
         },
         {
-            "name": "baseline_demographic_predictor",
+            "name": "3 · baseline — demographic_only",
             "type": "debugpy",
             "request": "launch",
-            "program": "/mnt/c/Users/chris/Desktop/stuff/projects/2026/echonet_analysis/scripts/baseline_demographic_predictor.py",
+            "program": "${workspaceFolder}/scripts/3_baselines/demographic_only.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/.venv/bin/python"
+        },
+        {
+            "name": "4 · classical ML — compare_ecg_feature_sets",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/4_classical_ml/compare_ecg_feature_sets.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/.venv/bin/python"
+        },
+        {
+            "name": "5a · deep learning — cnn_waveforms_only",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/5_deep_learning/cnn_waveforms_only.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true,
+            "python": "${workspaceFolder}/.venv/bin/python"
+        },
+        {
+            "name": "5b · deep learning — cnn_waveforms_with_demographics",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/5_deep_learning/cnn_waveforms_with_demographics.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "justMyCode": true,
