@@ -1,38 +1,30 @@
 from __future__ import annotations
 
-SAMPLE_RATE_HZ = 250
+import functools
+import json
+from pathlib import Path
 
-LEAD_NAMES = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-DEMOGRAPHIC_FEATURES = ["age_at_ecg", "sex", "race_ethnicity", "location_setting"]
-NUMERIC_DEMOGRAPHIC_FEATURES = ["age_at_ecg"]
-CATEGORICAL_DEMOGRAPHIC_FEATURES = ["sex", "race_ethnicity", "location_setting"]
 
-TABULAR_ECG_FEATURES = [
-    "ventricular_rate",
-    "atrial_rate",
-    "pr_interval",
-    "qrs_duration",
-    "qt_corrected",
-    "age_at_ecg",
-]
+@functools.lru_cache(maxsize=1)
+def load_config() -> dict:
+    return json.loads((_PROJECT_ROOT / "data" / "project_config.json").read_text())
 
-TARGET_LABELS = [
-    "shd_moderate_or_greater_flag",
-    "lvef_lte_45_flag",
-    "lvwt_gte_13_flag",
-    "aortic_stenosis_moderate_or_greater_flag",
-    "aortic_regurgitation_moderate_or_greater_flag",
-    "mitral_regurgitation_moderate_or_greater_flag",
-    "tricuspid_regurgitation_moderate_or_greater_flag",
-    "pulmonary_regurgitation_moderate_or_greater_flag",
-    "rv_systolic_dysfunction_moderate_or_greater_flag",
-    "pericardial_effusion_moderate_large_flag",
-    "pasp_gte_45_flag",
-    "tr_max_gte_32_flag",
-]
 
-DATASET_SUBDIR = (
-    "echonext-a-dataset-for-detecting-echocardiogram-confirmed-structural-heart-disease-from-ecgs-1.1.0"
-)
-METADATA_FILENAME = "echonext_metadata_100k.csv"
+_cfg = load_config()
+
+SAMPLE_RATE_HZ: int           = _cfg["ecg"]["sample_rate_hz"]
+N_LEADS: int                  = _cfg["ecg"]["n_leads"]
+SIGNAL_LENGTH_SAMPLES: int    = _cfg["ecg"]["signal_length_samples"]
+LEAD_NAMES: list[str]         = _cfg["ecg"]["lead_names"]
+
+DEMOGRAPHIC_FEATURES: list[str]             = _cfg["features"]["demographic"]
+NUMERIC_DEMOGRAPHIC_FEATURES: list[str]     = _cfg["features"]["demographic_numeric"]
+CATEGORICAL_DEMOGRAPHIC_FEATURES: list[str] = _cfg["features"]["demographic_categorical"]
+TABULAR_ECG_FEATURES: list[str]             = _cfg["features"]["tabular_ecg"]
+
+TARGET_LABELS: list[str] = _cfg["targets"]
+
+DATASET_SUBDIR: str    = _cfg["dataset"]["subdir"]
+METADATA_FILENAME: str = _cfg["dataset"]["metadata_file"]

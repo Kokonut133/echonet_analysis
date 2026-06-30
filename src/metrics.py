@@ -1,9 +1,3 @@
-"""Per-label evaluation metrics for multi-label ECG classification.
-
-Each label is evaluated independently. NaN labels are excluded from that
-label's metric computation. Mean AUROC across labels is used as the
-primary scalar for early stopping and model selection.
-"""
 from __future__ import annotations
 
 import numpy as np
@@ -12,7 +6,7 @@ import torch
 from sklearn.metrics import average_precision_score, balanced_accuracy_score, roc_auc_score
 from torch.utils.data import DataLoader
 
-from src.model import ECGConvNet
+from src.models import ECGConvNet
 
 
 def compute_per_label_metrics(
@@ -20,17 +14,6 @@ def compute_per_label_metrics(
     y_prob: np.ndarray,
     label_names: list[str],
 ) -> pd.DataFrame:
-    """Compute AUROC, AUPRC, and balanced accuracy per label.
-
-    Args:
-        y_true: (N, n_labels) float array, may contain NaN for missing labels.
-        y_prob: (N, n_labels) float array of predicted probabilities in [0, 1].
-        label_names: list of label column names.
-
-    Returns:
-        DataFrame with one row per label and columns:
-        label, auroc, auprc, balanced_acc, n_positive, n_total, prevalence.
-    """
     rows = []
     for i, name in enumerate(label_names):
         col_true = y_true[:, i]
@@ -44,9 +27,7 @@ def compute_per_label_metrics(
         n_positive = int(col_true.sum())
 
         if n_total < 10 or len(np.unique(col_true)) < 2:
-            auroc = float("nan")
-            auprc = float("nan")
-            bal_acc = float("nan")
+            auroc = auprc = bal_acc = float("nan")
         else:
             col_pred = (col_prob >= 0.5).astype(int)
             auroc = float(roc_auc_score(col_true, col_prob))
@@ -73,11 +54,6 @@ def evaluate_loader(
     device: torch.device,
     label_names: list[str],
 ) -> pd.DataFrame:
-    """Run model on all batches and return per-label metrics.
-
-    Expects each batch to be a 4-tuple: (waveforms, demo, labels, valid_mask).
-    Labels may contain NaN (stored as 0 with valid_mask=False).
-    """
     model.eval()
 
     all_probs: list[np.ndarray] = []
@@ -87,10 +63,7 @@ def evaluate_loader(
     for waveforms, demo, labels, valid_mask in loader:
         waveforms = waveforms.to(device)
         demo = demo.to(device)
-
-        logits = model(waveforms, demo)
-        probs = torch.sigmoid(logits).cpu().numpy()
-
+        probs = torch.sigmoid(model(waveforms, demo)).cpu().numpy()
         all_probs.append(probs)
         all_true.append(labels.numpy())
         all_mask.append(valid_mask.numpy())
@@ -99,13 +72,11 @@ def evaluate_loader(
     y_true = np.concatenate(all_true, axis=0).astype(float)
     y_mask = np.concatenate(all_mask, axis=0)
 
-    # restore NaN for masked positions so compute_per_label_metrics can filter them
     y_true[~y_mask] = float("nan")
 
     return compute_per_label_metrics(y_true, y_prob, label_names)
 
 
 def mean_auroc(metrics_df: pd.DataFrame) -> float:
-    """Scalar summary metric: mean AUROC across labels with valid scores."""
     valid = metrics_df["auroc"].dropna()
     return float(valid.mean()) if len(valid) > 0 else 0.0

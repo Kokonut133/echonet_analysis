@@ -1,10 +1,3 @@
-"""1D CNN model for multi-label ECG classification.
-
-The backbone processes 12-lead waveforms with stacked residual Conv1d blocks,
-compressing (batch, 12, 2500) down to a 256-dim embedding via adaptive average pooling.
-Demographic features are concatenated after the backbone when n_demo_features > 0.
-The head maps the joint embedding to n_labels independent binary logits.
-"""
 from __future__ import annotations
 
 import torch
@@ -12,11 +5,6 @@ import torch.nn as nn
 
 
 class ResBlock(nn.Module):
-    """Two-layer residual block with optional downsampling shortcut.
-
-    Uses stride on the first conv to halve the time dimension when stride > 1.
-    """
-
     def __init__(self, in_channels: int, out_channels: int, stride: int = 1):
         super().__init__()
         self.conv1 = nn.Conv1d(
@@ -45,23 +33,10 @@ class ResBlock(nn.Module):
 
 
 class ECGConvNet(nn.Module):
-    """Multi-label 1D CNN for 12-lead ECG classification.
-
-    Architecture:
-      Stem   : Conv1d(12 → 32, k=7, stride=2) + BN + ReLU
-      Stage 1: ResBlock(32 → 64,  stride=2)
-      Stage 2: ResBlock(64 → 128, stride=2)
-      Stage 3: ResBlock(128 → 256, stride=2)
-      Stage 4: ResBlock(256 → 256, stride=2)
-      Pool   : AdaptiveAvgPool1d(1)  → (batch, 256)
-      [if n_demo_features > 0: concat → (batch, 256 + n_demo_features)]
-      Head   : Linear → ReLU → Dropout → Linear → n_labels logits
-
-    Args:
-        n_leads: number of ECG leads (channels in the input waveform).
-        n_labels: number of binary output labels.
-        n_demo_features: size of the demographic feature vector; 0 disables the demo path.
-        dropout: dropout probability applied in the classification head.
+    """
+    Stem → ResBlock(32→64) → ResBlock(64→128) → ResBlock(128→256) → ResBlock(256→256)
+    → AdaptiveAvgPool1d(1) → [cat demo if n_demo_features > 0] → Linear head → n_labels logits
+    in: (batch, n_leads, 2500)  out: (batch, n_labels)
     """
 
     def __init__(
@@ -94,20 +69,12 @@ class ECGConvNet(nn.Module):
         )
 
     def forward(self, waveforms: torch.Tensor, demo: torch.Tensor | None = None) -> torch.Tensor:
-        """
-        Args:
-            waveforms: (batch, n_leads, time)
-            demo: (batch, n_demo_features) or None / empty tensor
-
-        Returns:
-            logits: (batch, n_labels) — raw scores before sigmoid
-        """
         x = self.stem(waveforms)
         x = self.stage1(x)
         x = self.stage2(x)
         x = self.stage3(x)
         x = self.stage4(x)
-        x = self.pool(x).squeeze(-1)  # (batch, 256)
+        x = self.pool(x).squeeze(-1)
 
         if self.n_demo_features > 0 and demo is not None and demo.shape[1] > 0:
             x = torch.cat([x, demo], dim=1)

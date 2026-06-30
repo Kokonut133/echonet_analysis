@@ -1,12 +1,3 @@
-"""Training loop with early stopping for the ECG CNN pipelines.
-
-The Trainer handles:
-  - class-imbalance via per-label pos_weight in BCEWithLogitsLoss
-  - masked loss (NaN labels are excluded per sample per label)
-  - learning-rate reduction on plateau (val mean-AUROC)
-  - early stopping with checkpoint saving for the best val mean-AUROC
-  - per-epoch logging returned as a DataFrame
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -20,22 +11,25 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
+from src.constants import load_config
 from src.metrics import evaluate_loader, mean_auroc
-from src.model import ECGConvNet
+from src.models import ECGConvNet
+
+_cnn = load_config()["training"]["cnn"]
 
 
 @dataclass
 class TrainConfig:
-    n_epochs: int = 50
-    batch_size: int = 64
-    learning_rate: float = 1e-3
-    weight_decay: float = 1e-4
-    patience: int = 10
-    lr_reduce_factor: float = 0.5
-    lr_reduce_patience: int = 5
-    device: str = "auto"
-    checkpoint_dir: Path = field(default_factory=lambda: Path("checkpoints"))
-    num_workers: int = 4
+    n_epochs: int           = _cnn["n_epochs"]
+    batch_size: int         = _cnn["batch_size"]
+    learning_rate: float    = _cnn["learning_rate"]
+    weight_decay: float     = _cnn["weight_decay"]
+    patience: int           = _cnn["patience"]
+    lr_reduce_factor: float = _cnn["lr_reduce_factor"]
+    lr_reduce_patience: int = _cnn["lr_reduce_patience"]
+    device: str             = "auto"
+    checkpoint_dir: Path    = field(default_factory=lambda: Path("checkpoints"))
+    num_workers: int        = _cnn["num_workers"]
 
 
 def resolve_device(device_str: str) -> torch.device:
@@ -45,16 +39,6 @@ def resolve_device(device_str: str) -> torch.device:
 
 
 class Trainer:
-    """Trains an ECGConvNet with masked BCE loss, LR scheduling, and early stopping.
-
-    Args:
-        model: the ECGConvNet to train.
-        config: hyperparameter and runtime settings.
-        pos_weights: (n_labels,) tensor of positive class weights for BCE loss.
-            If None, all classes are weighted equally.
-        label_names: label column names used for metrics reporting.
-        checkpoint_name: filename stem for saving the best checkpoint.
-    """
 
     def __init__(
         self,
@@ -90,8 +74,8 @@ class Trainer:
 
     def fit(self, train_loader: DataLoader, val_loader: DataLoader) -> pd.DataFrame:
         """Train for up to config.n_epochs and return the epoch log as a DataFrame."""
-        best_auroc = -1.0
-        epochs_without_improvement = 0
+        best_val_auroc = -1.0
+        patience_counter = 0
         log: list[dict] = []
 
         print(f"Training on {self.device} | {len(train_loader.dataset):,} train, "
@@ -117,25 +101,25 @@ class Trainer:
                 "lr": lr,
             })
 
-            if val_auroc > best_auroc:
-                best_auroc = val_auroc
-                epochs_without_improvement = 0
+            if val_auroc > best_val_auroc:
+                best_val_auroc = val_auroc
+                patience_counter = 0
                 torch.save(self.model.state_dict(), self.checkpoint_path)
             else:
-                epochs_without_improvement += 1
-                if epochs_without_improvement >= self.config.patience:
-                    print(f"Early stopping at epoch {epoch} (best val AUROC={best_auroc:.4f})")
+                patience_counter += 1
+                if patience_counter >= self.config.patience:
+                    print(f"Early stopping at epoch {epoch} (best val AUROC={best_val_auroc:.4f})")
                     break
 
-        print(f"\nLoading best checkpoint (val mean-AUROC={best_auroc:.4f})")
+        print(f"\nLoading best checkpoint (val mean-AUROC={best_val_auroc:.4f})")
         self.model.load_state_dict(torch.load(self.checkpoint_path, map_location=self.device))
 
         return pd.DataFrame(log)
 
     def _train_epoch(self, loader: DataLoader) -> float:
         self.model.train()
-        total_loss = 0.0
-        total_elements = 0
+        total_masked_loss = 0.0
+        n_valid_label_elements = 0
 
         for waveforms, demo, labels, valid_mask in loader:
             waveforms = waveforms.to(self.device)
@@ -155,21 +139,14 @@ class Trainer:
             self.optimizer.step()
 
             n_elements = int(mask_float.sum().item())
-            total_loss += loss.item() * n_elements
-            total_elements += n_elements
+            total_masked_loss += loss.item() * n_elements
+            n_valid_label_elements += n_elements
 
-        return total_loss / max(total_elements, 1)
+        return total_masked_loss / max(n_valid_label_elements, 1)
 
 
 def compute_pos_weights(labels: np.ndarray) -> torch.Tensor:
-    """Compute per-label positive weights for BCEWithLogitsLoss from a label matrix.
-
-    Args:
-        labels: (N, n_labels) float array possibly containing NaN.
-
-    Returns:
-        (n_labels,) float32 tensor with weight = (1 - p) / p per label.
-    """
+    """(N, n_labels) float array with NaN → (n_labels,) tensor with weight = (1-p)/p per label."""
     weights = []
     for i in range(labels.shape[1]):
         col = labels[:, i]

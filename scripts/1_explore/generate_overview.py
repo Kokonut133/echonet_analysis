@@ -1131,7 +1131,7 @@ def main(dataset_dir: Path, reports_dir: Path, figures_dir: Path) -> None:
 
 
 if __name__ == "__main__":
-    project_root = Path(__file__).resolve().parents[1]
+    project_root = Path(__file__).resolve().parents[2]
     input_dir = project_root / (
         "data/echonext-a-dataset-for-detecting-echocardiogram-confirmed-structural-heart-disease-from-ecgs-1.1.0"
     )

@@ -14,20 +14,17 @@ Usage:
 """
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import pandas as pd
 from torch.utils.data import DataLoader
 
-# make src importable when running from any directory
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from src.constants import DATASET_DIRNAME, TARGET_LABELS
-from src.dataset import ECGDataset, build_demo_encoder, load_split
+from src.constants import DATASET_SUBDIR, METADATA_FILENAME, N_LEADS, TARGET_LABELS
+from src.dataset import ECGDataset, load_split
+from src.preprocessing import build_demographic_preprocessor
 from src.metrics import evaluate_loader
-from src.model import ECGConvNet
+from src.models import ECGConvNet
 from src.training import TrainConfig, Trainer, compute_pos_weights
 
 
@@ -41,28 +38,22 @@ class RunConfig:
 
 
 def build_run_config() -> RunConfig:
-    project_root = Path(__file__).resolve().parents[1]
-    dataset_dir = project_root / "data" / DATASET_DIRNAME
+    project_root = Path(__file__).resolve().parents[2]
+    dataset_dir = project_root / "data" / DATASET_SUBDIR
     return RunConfig(
         dataset_dir=dataset_dir,
-        metadata_path=dataset_dir / "echonext_metadata_100k.csv",
+        metadata_path=dataset_dir / METADATA_FILENAME,
         output_dir=project_root / "reports",
         checkpoint_dir=project_root / "checkpoints",
-        train_config=TrainConfig(
-            n_epochs=50,
-            batch_size=64,
-            learning_rate=1e-3,
-            patience=10,
-            checkpoint_dir=project_root / "checkpoints",
-        ),
+        train_config=TrainConfig(checkpoint_dir=project_root / "checkpoints"),
     )
 
 
-def run(config: RunConfig) -> None:
+def train_cnn_on_waveforms_and_demographics(config: RunConfig) -> None:
     metadata = pd.read_csv(config.metadata_path)
     print(f"Loaded metadata: {len(metadata):,} rows\n")
 
-    demo_encoder = build_demo_encoder()
+    demo_encoder = build_demographic_preprocessor()
 
     print("Loading splits (waveforms + demographics)...")
     train_data, demo_encoder = load_split(
@@ -90,7 +81,7 @@ def run(config: RunConfig) -> None:
     )
 
     model = ECGConvNet(
-        n_leads=12,
+        n_leads=N_LEADS,
         n_labels=len(TARGET_LABELS),
         n_demo_features=n_demo,
     )
@@ -121,7 +112,7 @@ def run(config: RunConfig) -> None:
 
 def main() -> None:
     config = build_run_config()
-    run(config)
+    train_cnn_on_waveforms_and_demographics(config)
 
 
 if __name__ == "__main__":
