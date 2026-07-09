@@ -18,14 +18,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pandas as pd
-from torch.utils.data import DataLoader
 
 from src.constants import DATASET_SUBDIR, METADATA_FILENAME, N_LEADS, TARGET_LABELS
 from src.dataset import ECGDataset, load_split
 from src.preprocessing import build_demographic_preprocessor
 from src.metrics import evaluate_loader
 from src.models import ECGConvNet
-from src.training import TrainConfig, Trainer, compute_pos_weights
+from src.training import TrainConfig, Trainer, build_dataloaders, compute_pos_weights
 
 
 @dataclass
@@ -68,17 +67,12 @@ def train_cnn_on_waveforms_and_demographics(config: RunConfig) -> None:
     n_demo = train_data.demo_features.shape[1]
     print(f"\nDemographic feature dimensionality: {n_demo}")
 
+    train_labels = train_data.labels
     train_ds = ECGDataset(train_data)
     val_ds = ECGDataset(val_data)
+    del train_data, val_data
 
-    train_loader = DataLoader(
-        train_ds, batch_size=config.train_config.batch_size,
-        shuffle=True, num_workers=config.train_config.num_workers, pin_memory=True,
-    )
-    val_loader = DataLoader(
-        val_ds, batch_size=config.train_config.batch_size,
-        shuffle=False, num_workers=config.train_config.num_workers, pin_memory=True,
-    )
+    train_loader, val_loader = build_dataloaders(train_ds, val_ds, config.train_config)
 
     model = ECGConvNet(
         n_leads=N_LEADS,
@@ -87,7 +81,7 @@ def train_cnn_on_waveforms_and_demographics(config: RunConfig) -> None:
     )
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-    pos_weights = compute_pos_weights(train_data.labels)
+    pos_weights = compute_pos_weights(train_labels)
 
     trainer = Trainer(
         model=model,
