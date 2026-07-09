@@ -10,6 +10,7 @@ import torch.nn as nn
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from src.constants import load_config
 from src.metrics import evaluate_loader, mean_auroc
@@ -36,6 +37,29 @@ def resolve_device(device_str: str) -> torch.device:
     if device_str == "auto":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return torch.device(device_str)
+
+
+def build_dataloaders(
+    train_ds,
+    val_ds,
+    config: TrainConfig,
+) -> tuple[DataLoader, DataLoader]:
+    pin_memory = resolve_device(config.device).type == "cuda"
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=config.batch_size,
+        shuffle=True,
+        num_workers=config.num_workers,
+        pin_memory=pin_memory,
+    )
+    val_loader = DataLoader(
+        val_ds,
+        batch_size=config.batch_size,
+        shuffle=False,
+        num_workers=config.num_workers,
+        pin_memory=pin_memory,
+    )
+    return train_loader, val_loader
 
 
 class Trainer:
@@ -82,7 +106,7 @@ class Trainer:
               f"{len(val_loader.dataset):,} val samples")
 
         for epoch in range(1, self.config.n_epochs + 1):
-            train_loss = self._train_epoch(train_loader)
+            train_loss = self._train_epoch(train_loader, epoch)
             val_metrics = evaluate_loader(self.model, val_loader, self.device, self.label_names)
             val_auroc = mean_auroc(val_metrics)
 
@@ -116,12 +140,18 @@ class Trainer:
 
         return pd.DataFrame(log)
 
-    def _train_epoch(self, loader: DataLoader) -> float:
+    def _train_epoch(self, loader: DataLoader, epoch: int) -> float:
         self.model.train()
         total_masked_loss = 0.0
         n_valid_label_elements = 0
 
-        for waveforms, demo, labels, valid_mask in loader:
+        pbar = tqdm(
+            loader,
+            desc=f"  epoch {epoch:3d}/{self.config.n_epochs}",
+            leave=False,
+            unit="batch",
+        )
+        for waveforms, demo, labels, valid_mask in pbar:
             waveforms = waveforms.to(self.device)
             demo = demo.to(self.device)
             labels = labels.to(self.device)
@@ -141,6 +171,7 @@ class Trainer:
             n_elements = int(mask_float.sum().item())
             total_masked_loss += loss.item() * n_elements
             n_valid_label_elements += n_elements
+            pbar.set_postfix(loss=f"{loss.item():.4f}")
 
         return total_masked_loss / max(n_valid_label_elements, 1)
 

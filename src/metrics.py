@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import torch
+from tqdm import tqdm
 from sklearn.metrics import average_precision_score, balanced_accuracy_score, roc_auc_score
 from torch.utils.data import DataLoader
 
@@ -60,7 +61,7 @@ def evaluate_loader(
     all_true: list[np.ndarray] = []
     all_mask: list[np.ndarray] = []
 
-    for waveforms, demo, labels, valid_mask in loader:
+    for waveforms, demo, labels, valid_mask in tqdm(loader, desc="  eval", leave=False, unit="batch"):
         waveforms = waveforms.to(device)
         demo = demo.to(device)
         probs = torch.sigmoid(model(waveforms, demo)).cpu().numpy()
