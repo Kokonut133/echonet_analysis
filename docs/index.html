@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EchoNext ECG Results</title>
+<meta name="description" content="Interactive AUROC/AUPRC comparison across ECG-based structural heart disease models, from demographics-only baselines to a raw-waveform 1D CNN.">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #ffffff;
+    --surface-1: #f7f7f6;
+    --surface-2: #eeeeec;
+    --border: #dcdcd9;
+    --text-primary: #14140f;
+    --text-secondary: #52514e;
+    --text-muted: #7a7973;
+    --accent: #2a78d6;
+    --link: #1c5cab;
+    --tier-demographics: #8a8d93;
+    --tier-tabular_ecg: #2a78d6;
+    --tier-waveform_features: #1baf7a;
+    --tier-combined: #4a3aa7;
+    --tier-cnn_raw_waveform: #eb6834;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0: #131312;
+      --surface-1: #1a1a19;
+      --surface-2: #232322;
+      --border: #37372f;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #928f83;
+      --accent: #3987e5;
+      --link: #86b6ef;
+      --tier-demographics: #a3a7ad;
+    --tier-tabular_ecg: #3987e5;
+    --tier-waveform_features: #199e70;
+    --tier-combined: #9085e9;
+    --tier-cnn_raw_waveform: #d95926;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #131312;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --border: #37372f;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #928f83;
+    --accent: #3987e5;
+    --link: #86b6ef;
+    --tier-demographics: #a3a7ad;
+    --tier-tabular_ecg: #3987e5;
+    --tier-waveform_features: #199e70;
+    --tier-combined: #9085e9;
+    --tier-cnn_raw_waveform: #d95926;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  body {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+  }
+  header { margin-bottom: 20px; }
+  h1 {
+    font-size: 1.6rem;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin: 0 0 14px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    background: var(--surface-2);
+    margin-bottom: 12px;
+  }
+  .badge.final { color: #0ca30c; border-color: #0ca30c66; }
+  .badge.provisional { color: #c98500; border-color: #c9850066; }
+
+  .intro {
+    background: var(--surface-0);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin-bottom: 22px;
+  }
+  .intro strong { color: var(--text-primary); }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-0);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+  .control-group span.control-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  button.toggle-btn {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  button.toggle-btn.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.83rem;
+    padding: 5px 10px 5px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface-0);
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+  }
+  .legend-item.off {
+    opacity: 0.4;
+  }
+  .legend-swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    flex: none;
+  }
+
+  #chart {
+    width: 100%;
+    background: var(--surface-0);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px;
+    margin-bottom: 26px;
+  }
+
+  h2 {
+    font-size: 1.1rem;
+    margin: 0 0 10px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-0);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+    min-width: 640px;
+  }
+  thead th {
+    text-align: left;
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--text-primary); }
+  thead th.sorted::after { content: " \25BE"; }
+  thead th.sorted-asc::after { content: " \25B4"; }
+  tbody td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-1); }
+  td.num { font-variant-numeric: tabular-nums; }
+  .tier-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  footer {
+    margin-top: 32px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+  footer a { color: var(--link); }
+
+  @media (max-width: 560px) {
+    h1 { font-size: 1.35rem; }
+    .controls { gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge provisional">Validation results (provisional)</div>
+  <h1>EchoNext ECG &rarr; Structural Heart Disease: Model Results</h1>
+  <p class="subtitle">Generated 2026-09-21 11:10 UTC from <code>reports/{demographic_baseline,ecg_feature_model,cnn_waveforms}_results.csv (fallback)</code></p>
+</header>
+
+<div class="intro">
+  <p>
+    This page compares how much predictive signal for echocardiogram-confirmed
+    structural heart disease (SHD) can be pulled from a 12-lead ECG, as more
+    information is added: starting from <strong>demographics alone</strong>
+    (age, sex, race/ethnicity, care setting), then adding
+    <strong>standard ECG measurements</strong> (heart rate, PR/QRS/QT intervals),
+    then <strong>hand-crafted waveform features</strong>, their
+    <strong>combination</strong>, and finally a <strong>1D convolutional neural
+    network</strong> trained directly on the raw waveform. Each dot is one
+    disease target; AUROC (area under the ROC curve) measures how well a model
+    ranks people with the condition above people without it &mdash; 0.5 is a
+    coin flip, 1.0 is perfect separation. <strong>These are provisional validation-split results</strong>, assembled automatically because <code>reports/final_results.csv</code> (the held-out test-split summary with bootstrap confidence intervals) has not been produced yet. Re-run <code>scripts/10_site/build_site.py</code> once it exists to switch this page to official test-split numbers.
+  </p>
+</div>
+
+<div class="controls">
+  <div class="control-group">
+    <span class="control-label">Metric</span>
+    <button class="toggle-btn active" data-metric="auroc" id="metric-auroc">AUROC</button>
+    <button class="toggle-btn" data-metric="auprc" id="metric-auprc">AUPRC</button>
+  </div>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div id="chart"></div>
+
+<h2>Results table</h2>
+<div class="table-wrap">
+  <table id="results-table">
+    <thead>
+      <tr>
+        <th data-key="target_label">Target</th>
+        <th data-key="tier_label">Tier</th>
+        <th data-key="model">Model</th>
+        <th data-key="split">Split</th>
+        <th data-key="auroc" class="num sorted">AUROC</th>
+        <th data-key="auprc" class="num">AUPRC</th>
+        <th data-key="balanced_acc" class="num">Bal. acc.</th>
+        <th data-key="prevalence" class="num">Prevalence</th>
+        <th data-key="n_total" class="num">N</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<footer>
+  Source code and full analysis:
+  <a href="https://github.com/Kokonut133/echonet_analysis" target="_blank" rel="noopener">github.com/Kokonut133/echonet_analysis</a>.
+  Research / portfolio project &mdash; not a medical device. See
+  <a href="https://github.com/Kokonut133/echonet_analysis/blob/master/MODEL_CARD.md" target="_blank" rel="noopener">MODEL_CARD.md</a>
+  for intended use and limitations.
+</footer>
+
+<script>
+const RESULTS = [{"target": "shd_moderate_or_greater_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.6971, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.6986, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6428, "prevalence": 0.5219, "n_positive": 52188, "n_total": 100000, "target_label": "Structural heart disease (broad)", "tier_label": "Demographics only"}, {"target": "shd_moderate_or_greater_flag", "tier": "tabular_ecg", "model": "GradientBoosting", "split": "val", "auroc": 0.7448, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.6956, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6753, "prevalence": 0.5181, "n_positive": 39948, "n_total": 77101, "target_label": "Structural heart disease (broad)", "tier_label": "Tabular ECG metrics"}, {"target": "shd_moderate_or_greater_flag", "tier": "waveform_features", "model": "GradientBoosting", "split": "val", "auroc": 0.7886, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.7565, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7122, "prevalence": 0.5181, "n_positive": 39948, "n_total": 77101, "target_label": "Structural heart disease (broad)", "tier_label": "Hand-crafted waveform features"}, {"target": "shd_moderate_or_greater_flag", "tier": "combined", "model": "GradientBoosting", "split": "val", "auroc": 0.809, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.7751, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7305, "prevalence": 0.5181, "n_positive": 39948, "n_total": 77101, "target_label": "Structural heart disease (broad)", "tier_label": "Tabular + waveform features"}, {"target": "shd_moderate_or_greater_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.8191, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.7911, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7375, "prevalence": 0.4302, "n_positive": 1990, "n_total": 4626, "target_label": "Structural heart disease (broad)", "tier_label": "1D CNN on raw waveform"}, {"target": "lvef_lte_45_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.6921, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.4057, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6381, "prevalence": 0.2389, "n_positive": 23892, "n_total": 100000, "target_label": "LVEF \u2264 45%", "tier_label": "Demographics only"}, {"target": "lvef_lte_45_flag", "tier": "tabular_ecg", "model": "GradientBoosting", "split": "val", "auroc": 0.7638, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.4428, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5889, "prevalence": 0.2312, "n_positive": 17828, "n_total": 77101, "target_label": "LVEF \u2264 45%", "tier_label": "Tabular ECG metrics"}, {"target": "lvef_lte_45_flag", "tier": "waveform_features", "model": "GradientBoosting", "split": "val", "auroc": 0.8531, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.6343, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6998, "prevalence": 0.2312, "n_positive": 17828, "n_total": 77101, "target_label": "LVEF \u2264 45%", "tier_label": "Hand-crafted waveform features"}, {"target": "lvef_lte_45_flag", "tier": "combined", "model": "GradientBoosting", "split": "val", "auroc": 0.8612, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.6547, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7137, "prevalence": 0.2312, "n_positive": 17828, "n_total": 77101, "target_label": "LVEF \u2264 45%", "tier_label": "Tabular + waveform features"}, {"target": "lvef_lte_45_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.8832, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.7044, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.8023, "prevalence": 0.1872, "n_positive": 866, "n_total": 4626, "target_label": "LVEF \u2264 45%", "tier_label": "1D CNN on raw waveform"}, {"target": "lvwt_gte_13_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.6802, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3992, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6287, "prevalence": 0.2422, "n_positive": 24220, "n_total": 100000, "target_label": "LV wall thickness \u2265 13mm", "tier_label": "Demographics only"}, {"target": "lvwt_gte_13_flag", "tier": "tabular_ecg", "model": "GradientBoosting", "split": "val", "auroc": 0.6871, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3247, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5153, "prevalence": 0.2405, "n_positive": 18544, "n_total": 77101, "target_label": "LV wall thickness \u2265 13mm", "tier_label": "Tabular ECG metrics"}, {"target": "lvwt_gte_13_flag", "tier": "waveform_features", "model": "GradientBoosting", "split": "val", "auroc": 0.7172, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3625, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5529, "prevalence": 0.2405, "n_positive": 18544, "n_total": 77101, "target_label": "LV wall thickness \u2265 13mm", "tier_label": "Hand-crafted waveform features"}, {"target": "lvwt_gte_13_flag", "tier": "combined", "model": "GradientBoosting", "split": "val", "auroc": 0.7341, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.382, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5628, "prevalence": 0.2405, "n_positive": 18544, "n_total": 77101, "target_label": "LV wall thickness \u2265 13mm", "tier_label": "Tabular + waveform features"}, {"target": "lvwt_gte_13_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.7282, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3752, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6635, "prevalence": 0.1896, "n_positive": 877, "n_total": 4626, "target_label": "LV wall thickness \u2265 13mm", "tier_label": "1D CNN on raw waveform"}, {"target": "aortic_stenosis_moderate_or_greater_flag", "tier": "demographics", "model": "GradientBoosting", "split": "val", "auroc": 0.8729, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2873, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5547, "prevalence": 0.0405, "n_positive": 4054, "n_total": 100000, "target_label": "Aortic stenosis (moderate+)", "tier_label": "Demographics only"}, {"target": "aortic_stenosis_moderate_or_greater_flag", "tier": "tabular_ecg", "model": "GradientBoosting", "split": "val", "auroc": 0.8426, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.253, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5122, "prevalence": 0.0411, "n_positive": 3171, "n_total": 77101, "target_label": "Aortic stenosis (moderate+)", "tier_label": "Tabular ECG metrics"}, {"target": "aortic_stenosis_moderate_or_greater_flag", "tier": "waveform_features", "model": "GradientBoosting", "split": "val", "auroc": 0.7525, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.1384, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5006, "prevalence": 0.0411, "n_positive": 3171, "n_total": 77101, "target_label": "Aortic stenosis (moderate+)", "tier_label": "Hand-crafted waveform features"}, {"target": "aortic_stenosis_moderate_or_greater_flag", "tier": "combined", "model": "LogisticRegression", "split": "val", "auroc": 0.8631, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3128, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.775, "prevalence": 0.0411, "n_positive": 3171, "n_total": 77101, "target_label": "Aortic stenosis (moderate+)", "tier_label": "Tabular + waveform features"}, {"target": "aortic_stenosis_moderate_or_greater_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.8211, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.246, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7556, "prevalence": 0.0545, "n_positive": 252, "n_total": 4626, "target_label": "Aortic stenosis (moderate+)", "tier_label": "1D CNN on raw waveform"}, {"target": "pericardial_effusion_moderate_large_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.7905, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.1916, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7204, "prevalence": 0.0302, "n_positive": 3023, "n_total": 100000, "target_label": "Pericardial effusion (moderate/large)", "tier_label": "Demographics only"}, {"target": "pericardial_effusion_moderate_large_flag", "tier": "tabular_ecg", "model": "LogisticRegression", "split": "val", "auroc": 0.6842, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0216, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6302, "prevalence": 0.0276, "n_positive": 2131, "n_total": 77101, "target_label": "Pericardial effusion (moderate/large)", "tier_label": "Tabular ECG metrics"}, {"target": "pericardial_effusion_moderate_large_flag", "tier": "waveform_features", "model": "LogisticRegression", "split": "val", "auroc": 0.708, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0281, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6305, "prevalence": 0.0276, "n_positive": 2131, "n_total": 77101, "target_label": "Pericardial effusion (moderate/large)", "tier_label": "Hand-crafted waveform features"}, {"target": "pericardial_effusion_moderate_large_flag", "tier": "combined", "model": "LogisticRegression", "split": "val", "auroc": 0.733, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0289, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6681, "prevalence": 0.0276, "n_positive": 2131, "n_total": 77101, "target_label": "Pericardial effusion (moderate/large)", "tier_label": "Tabular + waveform features"}, {"target": "pericardial_effusion_moderate_large_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.7656, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0314, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6894, "prevalence": 0.0112, "n_positive": 52, "n_total": 4626, "target_label": "Pericardial effusion (moderate/large)", "tier_label": "1D CNN on raw waveform"}, {"target": "rv_systolic_dysfunction_moderate_or_greater_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.7239, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3149, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6628, "prevalence": 0.1324, "n_positive": 13243, "n_total": 100000, "target_label": "RV systolic dysfunction (moderate+)", "tier_label": "Demographics only"}, {"target": "rv_systolic_dysfunction_moderate_or_greater_flag", "tier": "tabular_ecg", "model": "GradientBoosting", "split": "val", "auroc": 0.7658, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2315, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5322, "prevalence": 0.1292, "n_positive": 9965, "n_total": 77101, "target_label": "RV systolic dysfunction (moderate+)", "tier_label": "Tabular ECG metrics"}, {"target": "rv_systolic_dysfunction_moderate_or_greater_flag", "tier": "waveform_features", "model": "RandomForest", "split": "val", "auroc": 0.8484, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3837, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7027, "prevalence": 0.1292, "n_positive": 9965, "n_total": 77101, "target_label": "RV systolic dysfunction (moderate+)", "tier_label": "Hand-crafted waveform features"}, {"target": "rv_systolic_dysfunction_moderate_or_greater_flag", "tier": "combined", "model": "GradientBoosting", "split": "val", "auroc": 0.8563, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3903, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5833, "prevalence": 0.1292, "n_positive": 9965, "n_total": 77101, "target_label": "RV systolic dysfunction (moderate+)", "tier_label": "Tabular + waveform features"}, {"target": "rv_systolic_dysfunction_moderate_or_greater_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.8851, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.4841, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.8039, "prevalence": 0.0796, "n_positive": 368, "n_total": 4626, "target_label": "RV systolic dysfunction (moderate+)", "tier_label": "1D CNN on raw waveform"}, {"target": "pasp_gte_45_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.6848, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3366, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6339, "prevalence": 0.1899, "n_positive": 18993, "n_total": 100000, "target_label": "PASP \u2265 45 mmHg", "tier_label": "Demographics only"}, {"target": "pasp_gte_45_flag", "tier": "tabular_ecg", "model": "GradientBoosting", "split": "val", "auroc": 0.6896, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2275, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5104, "prevalence": 0.1856, "n_positive": 14308, "n_total": 77101, "target_label": "PASP \u2265 45 mmHg", "tier_label": "Tabular ECG metrics"}, {"target": "pasp_gte_45_flag", "tier": "waveform_features", "model": "GradientBoosting", "split": "val", "auroc": 0.7243, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2786, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5212, "prevalence": 0.1856, "n_positive": 14308, "n_total": 77101, "target_label": "PASP \u2265 45 mmHg", "tier_label": "Hand-crafted waveform features"}, {"target": "pasp_gte_45_flag", "tier": "combined", "model": "GradientBoosting", "split": "val", "auroc": 0.7516, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3007, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5416, "prevalence": 0.1856, "n_positive": 14308, "n_total": 77101, "target_label": "PASP \u2265 45 mmHg", "tier_label": "Tabular + waveform features"}, {"target": "pasp_gte_45_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.7741, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3479, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7027, "prevalence": 0.1256, "n_positive": 581, "n_total": 4626, "target_label": "PASP \u2265 45 mmHg", "tier_label": "1D CNN on raw waveform"}, {"target": "mitral_regurgitation_moderate_or_greater_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.7178, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2278, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6613, "prevalence": 0.0845, "n_positive": 8451, "n_total": 100000, "target_label": "Mitral regurgitation (moderate+)", "tier_label": "Demographics only"}, {"target": "mitral_regurgitation_moderate_or_greater_flag", "tier": "tabular_ecg", "model": "GradientBoosting", "split": "val", "auroc": 0.7635, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.1759, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5046, "prevalence": 0.0833, "n_positive": 6419, "n_total": 77101, "target_label": "Mitral regurgitation (moderate+)", "tier_label": "Tabular ECG metrics"}, {"target": "mitral_regurgitation_moderate_or_greater_flag", "tier": "waveform_features", "model": "RandomForest", "split": "val", "auroc": 0.78, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.1936, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5929, "prevalence": 0.0833, "n_positive": 6419, "n_total": 77101, "target_label": "Mitral regurgitation (moderate+)", "tier_label": "Hand-crafted waveform features"}, {"target": "mitral_regurgitation_moderate_or_greater_flag", "tier": "combined", "model": "GradientBoosting", "split": "val", "auroc": 0.8114, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2384, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5255, "prevalence": 0.0833, "n_positive": 6419, "n_total": 77101, "target_label": "Mitral regurgitation (moderate+)", "tier_label": "Tabular + waveform features"}, {"target": "mitral_regurgitation_moderate_or_greater_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.8139, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2372, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7442, "prevalence": 0.061, "n_positive": 282, "n_total": 4626, "target_label": "Mitral regurgitation (moderate+)", "tier_label": "1D CNN on raw waveform"}, {"target": "aortic_regurgitation_moderate_or_greater_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.7643, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0692, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7217, "prevalence": 0.0126, "n_positive": 1264, "n_total": 100000, "target_label": "Aortic regurgitation (moderate+)", "tier_label": "Demographics only"}, {"target": "aortic_regurgitation_moderate_or_greater_flag", "tier": "tabular_ecg", "model": "LogisticRegression", "split": "val", "auroc": 0.6655, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0286, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6453, "prevalence": 0.0122, "n_positive": 940, "n_total": 77101, "target_label": "Aortic regurgitation (moderate+)", "tier_label": "Tabular ECG metrics"}, {"target": "aortic_regurgitation_moderate_or_greater_flag", "tier": "waveform_features", "model": "RandomForest", "split": "val", "auroc": 0.7168, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0446, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5, "prevalence": 0.0122, "n_positive": 940, "n_total": 77101, "target_label": "Aortic regurgitation (moderate+)", "tier_label": "Hand-crafted waveform features"}, {"target": "aortic_regurgitation_moderate_or_greater_flag", "tier": "combined", "model": "RandomForest", "split": "val", "auroc": 0.7278, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0439, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5, "prevalence": 0.0122, "n_positive": 940, "n_total": 77101, "target_label": "Aortic regurgitation (moderate+)", "tier_label": "Tabular + waveform features"}, {"target": "aortic_regurgitation_moderate_or_greater_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.7804, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0519, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7198, "prevalence": 0.0134, "n_positive": 62, "n_total": 4626, "target_label": "Aortic regurgitation (moderate+)", "tier_label": "1D CNN on raw waveform"}, {"target": "tricuspid_regurgitation_moderate_or_greater_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.7167, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2626, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6639, "prevalence": 0.1065, "n_positive": 10651, "n_total": 100000, "target_label": "Tricuspid regurgitation (moderate+)", "tier_label": "Demographics only"}, {"target": "tricuspid_regurgitation_moderate_or_greater_flag", "tier": "tabular_ecg", "model": "GradientBoosting", "split": "val", "auroc": 0.7556, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2212, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5313, "prevalence": 0.1039, "n_positive": 8012, "n_total": 77101, "target_label": "Tricuspid regurgitation (moderate+)", "tier_label": "Tabular ECG metrics"}, {"target": "tricuspid_regurgitation_moderate_or_greater_flag", "tier": "waveform_features", "model": "RandomForest", "split": "val", "auroc": 0.8019, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2908, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6194, "prevalence": 0.1039, "n_positive": 8012, "n_total": 77101, "target_label": "Tricuspid regurgitation (moderate+)", "tier_label": "Hand-crafted waveform features"}, {"target": "tricuspid_regurgitation_moderate_or_greater_flag", "tier": "combined", "model": "GradientBoosting", "split": "val", "auroc": 0.8321, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.3007, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5639, "prevalence": 0.1039, "n_positive": 8012, "n_total": 77101, "target_label": "Tricuspid regurgitation (moderate+)", "tier_label": "Tabular + waveform features"}, {"target": "tricuspid_regurgitation_moderate_or_greater_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.8405, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2797, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.7641, "prevalence": 0.0659, "n_positive": 305, "n_total": 4626, "target_label": "Tricuspid regurgitation (moderate+)", "tier_label": "1D CNN on raw waveform"}, {"target": "tr_max_gte_32_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.7269, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.2479, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.664, "prevalence": 0.1021, "n_positive": 10212, "n_total": 100000, "target_label": "TR max velocity \u2265 3.2 m/s", "tier_label": "Demographics only"}, {"target": "tr_max_gte_32_flag", "tier": "tabular_ecg", "model": "LogisticRegression", "split": "val", "auroc": 0.686, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0989, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6434, "prevalence": 0.1006, "n_positive": 7759, "n_total": 77101, "target_label": "TR max velocity \u2265 3.2 m/s", "tier_label": "Tabular ECG metrics"}, {"target": "tr_max_gte_32_flag", "tier": "waveform_features", "model": "RandomForest", "split": "val", "auroc": 0.73, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.1482, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5473, "prevalence": 0.1006, "n_positive": 7759, "n_total": 77101, "target_label": "TR max velocity \u2265 3.2 m/s", "tier_label": "Hand-crafted waveform features"}, {"target": "tr_max_gte_32_flag", "tier": "combined", "model": "GradientBoosting", "split": "val", "auroc": 0.7615, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.1606, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5071, "prevalence": 0.1006, "n_positive": 7759, "n_total": 77101, "target_label": "TR max velocity \u2265 3.2 m/s", "tier_label": "Tabular + waveform features"}, {"target": "tr_max_gte_32_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.7899, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.1782, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.728, "prevalence": 0.0577, "n_positive": 267, "n_total": 4626, "target_label": "TR max velocity \u2265 3.2 m/s", "tier_label": "1D CNN on raw waveform"}, {"target": "pulmonary_regurgitation_moderate_or_greater_flag", "tier": "demographics", "model": "RandomForest", "split": "val", "auroc": 0.887, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.1729, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.8283, "prevalence": 0.0082, "n_positive": 821, "n_total": 100000, "target_label": "Pulmonary regurgitation (moderate+)", "tier_label": "Demographics only"}, {"target": "pulmonary_regurgitation_moderate_or_greater_flag", "tier": "tabular_ecg", "model": "GradientBoosting", "split": "val", "auroc": 0.6399, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0097, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.4995, "prevalence": 0.0081, "n_positive": 624, "n_total": 77101, "target_label": "Pulmonary regurgitation (moderate+)", "tier_label": "Tabular ECG metrics"}, {"target": "pulmonary_regurgitation_moderate_or_greater_flag", "tier": "waveform_features", "model": "LogisticRegression", "split": "val", "auroc": 0.6449, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0081, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.5658, "prevalence": 0.0081, "n_positive": 624, "n_total": 77101, "target_label": "Pulmonary regurgitation (moderate+)", "tier_label": "Hand-crafted waveform features"}, {"target": "pulmonary_regurgitation_moderate_or_greater_flag", "tier": "combined", "model": "GradientBoosting", "split": "val", "auroc": 0.6499, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0085, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.4983, "prevalence": 0.0081, "n_positive": 624, "n_total": 77101, "target_label": "Pulmonary regurgitation (moderate+)", "tier_label": "Tabular + waveform features"}, {"target": "pulmonary_regurgitation_moderate_or_greater_flag", "tier": "cnn_raw_waveform", "model": "ECGConvNet", "split": "val", "auroc": 0.7419, "auroc_ci_low": null, "auroc_ci_high": null, "auprc": 0.0179, "auprc_ci_low": null, "auprc_ci_high": null, "balanced_acc": 0.6838, "prevalence": 0.0045, "n_positive": 21, "n_total": 4626, "target_label": "Pulmonary regurgitation (moderate+)", "tier_label": "1D CNN on raw waveform"}];
+const TIER_ORDER = ["demographics", "tabular_ecg", "waveform_features", "combined", "cnn_raw_waveform"];
+const TIER_LABELS = {"demographics": "Demographics only", "tabular_ecg": "Tabular ECG metrics", "waveform_features": "Hand-crafted waveform features", "combined": "Tabular + waveform features", "cnn_raw_waveform": "1D CNN on raw waveform"};
+const TIER_COLORS = {"demographics": {"light": "#8a8d93", "dark": "#a3a7ad"}, "tabular_ecg": {"light": "#2a78d6", "dark": "#3987e5"}, "waveform_features": {"light": "#1baf7a", "dark": "#199e70"}, "combined": {"light": "#4a3aa7", "dark": "#9085e9"}, "cnn_raw_waveform": {"light": "#eb6834", "dark": "#d95926"}};
+const IS_FINAL = false;
+
+const state = {
+  metric: "auroc",
+  hiddenTiers: new Set(),
+  sortKey: "auroc",
+  sortDir: "desc",
+};
+
+function isDark() {
+  const stamp = document.documentElement.getAttribute("data-theme");
+  if (stamp === "dark") return true;
+  if (stamp === "light") return false;
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function tierColor(tier) {
+  const mode = isDark() ? "dark" : "light";
+  return TIER_COLORS[tier][mode];
+}
+
+function buildLegend() {
+  const el = document.getElementById("legend");
+  el.innerHTML = "";
+  TIER_ORDER.forEach((tier) => {
+    const item = document.createElement("div");
+    item.className = "legend-item" + (state.hiddenTiers.has(tier) ? " off" : "");
+    item.dataset.tier = tier;
+    const sw = document.createElement("span");
+    sw.className = "legend-swatch";
+    sw.style.background = tierColor(tier);
+    item.appendChild(sw);
+    item.appendChild(document.createTextNode(TIER_LABELS[tier]));
+    item.addEventListener("click", () => {
+      if (state.hiddenTiers.has(tier)) {
+        state.hiddenTiers.delete(tier);
+      } else {
+        state.hiddenTiers.add(tier);
+      }
+      render();
+    });
+    el.appendChild(item);
+  });
+}
+
+function metricRange(metric) {
+  return metric === "auroc" ? [0.5, 1.0] : [0, 1.0];
+}
+
+function buildChart() {
+  const metric = state.metric;
+  const ciLow = metric + "_ci_low";
+  const ciHigh = metric + "_ci_high";
+
+  const targets = [];
+  RESULTS.forEach((r) => {
+    if (!targets.includes(r.target_label)) targets.push(r.target_label);
+  });
+  // Plotly categorical y-axis renders top-to-bottom in reverse list order.
+  const yOrder = targets.slice().reverse();
+
+  const traces = TIER_ORDER.filter((t) => !state.hiddenTiers.has(t)).map((tier) => {
+    const rows = RESULTS.filter((r) => r.tier === tier);
+    const hasCI = rows.some((r) => r[ciLow] !== null && r[ciLow] !== undefined);
+    const errorArray = hasCI ? rows.map((r) => (r[ciHigh] != null && r[metric] != null) ? (r[ciHigh] - r[metric]) : 0) : null;
+    const errorArrayMinus = hasCI ? rows.map((r) => (r[ciLow] != null && r[metric] != null) ? (r[metric] - r[ciLow]) : 0) : null;
+
+    return {
+      type: "scatter",
+      mode: "markers",
+      name: TIER_LABELS[tier],
+      x: rows.map((r) => r[metric]),
+      y: rows.map((r) => r.target_label),
+      marker: { color: tierColor(tier), size: 10, line: { color: "rgba(0,0,0,0.15)", width: 1 } },
+      error_x: hasCI ? {
+        type: "data",
+        symmetric: false,
+        array: errorArray,
+        arrayminus: errorArrayMinus,
+        color: tierColor(tier),
+        thickness: 1.2,
+        width: 3,
+      } : undefined,
+      customdata: rows.map((r) => [r.model, r[metric === "auroc" ? "auprc" : "auroc"], r.prevalence, r.n_total, r.split]),
+      hovertemplate:
+        "<b>%{y}</b><br>" +
+        TIER_LABELS[tier] + "<br>" +
+        "Model: %{customdata[0]}<br>" +
+        (metric === "auroc" ? "AUROC: %{x:.3f}<br>AUPRC: %{customdata[1]:.3f}<br>" : "AUPRC: %{x:.3f}<br>AUROC: %{customdata[1]:.3f}<br>") +
+        "Prevalence: %{customdata[2]:.1%}<br>" +
+        "N: %{customdata[3]}<br>" +
+        "Split: %{customdata[4]}" +
+        "<extra></extra>",
+    };
+  });
+
+  const textColor = getComputedStyle(document.body).getPropertyValue("--text-secondary").trim();
+  const gridColor = getComputedStyle(document.body).getPropertyValue("--border").trim();
+  const bg = getComputedStyle(document.body).getPropertyValue("--surface-0").trim();
+
+  const layout = {
+    paper_bgcolor: bg,
+    plot_bgcolor: bg,
+    font: { color: textColor, family: "inherit", size: 12 },
+    margin: { l: 240, r: 24, t: 20, b: 46 },
+    xaxis: {
+      range: metricRange(metric),
+      title: metric.toUpperCase(),
+      gridcolor: gridColor,
+      zeroline: false,
+      color: textColor,
+    },
+    yaxis: {
+      categoryorder: "array",
+      categoryarray: yOrder,
+      gridcolor: gridColor,
+      color: textColor,
+      automargin: true,
+    },
+    legend: { orientation: "h" },
+    showlegend: false,
+    height: Math.max(420, targets.length * 46 + 80),
+  };
+
+  Plotly.react("chart", traces, layout, { responsive: true, displayModeBar: false });
+}
+
+function fmtPct(v) {
+  return v === null || v === undefined ? "" : (v * 100).toFixed(1) + "%";
+}
+function fmtNum(v, digits) {
+  return v === null || v === undefined ? "" : Number(v).toFixed(digits);
+}
+
+function buildTable() {
+  const tbody = document.querySelector("#results-table tbody");
+  const rows = RESULTS.filter((r) => !state.hiddenTiers.has(r.tier));
+  const dir = state.sortDir === "asc" ? 1 : -1;
+  rows.sort((a, b) => {
+    let av = a[state.sortKey];
+    let bv = b[state.sortKey];
+    if (av === null || av === undefined) av = -Infinity;
+    if (bv === null || bv === undefined) bv = -Infinity;
+    if (typeof av === "string") return dir * av.localeCompare(bv);
+    return dir * (av - bv);
+  });
+
+  tbody.innerHTML = "";
+  rows.forEach((r) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td>" + r.target_label + "</td>" +
+      "<td><span class='tier-dot' style='background:" + tierColor(r.tier) + "'></span>" + r.tier_label + "</td>" +
+      "<td>" + r.model + "</td>" +
+      "<td>" + r.split + "</td>" +
+      "<td class='num'>" + fmtNum(r.auroc, 3) + "</td>" +
+      "<td class='num'>" + fmtNum(r.auprc, 3) + "</td>" +
+      "<td class='num'>" + fmtNum(r.balanced_acc, 3) + "</td>" +
+      "<td class='num'>" + fmtPct(r.prevalence) + "</td>" +
+      "<td class='num'>" + (r.n_total ?? "") + "</td>";
+    tbody.appendChild(tr);
+  });
+
+  document.querySelectorAll("#results-table thead th").forEach((th) => {
+    th.classList.remove("sorted", "sorted-asc");
+    if (th.dataset.key === state.sortKey) {
+      th.classList.add(state.sortDir === "desc" ? "sorted" : "sorted-asc");
+    }
+  });
+}
+
+function render() {
+  buildLegend();
+  buildChart();
+  buildTable();
+}
+
+document.querySelectorAll(".toggle-btn[data-metric]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".toggle-btn[data-metric]").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    state.metric = btn.dataset.metric;
+    if (state.sortKey === "auroc" || state.sortKey === "auprc") {
+      state.sortKey = state.metric;
+    }
+    render();
+  });
+});
+
+document.querySelectorAll("#results-table thead th").forEach((th) => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.key;
+    if (state.sortKey === key) {
+      state.sortDir = state.sortDir === "desc" ? "asc" : "desc";
+    } else {
+      state.sortKey = key;
+      state.sortDir = "desc";
+    }
+    render();
+  });
+});
+
+if (window.matchMedia) {
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+}
+
+render();
+</script>
+</body>
+</html>
