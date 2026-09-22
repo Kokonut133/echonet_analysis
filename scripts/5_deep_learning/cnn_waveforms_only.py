@@ -6,7 +6,7 @@ Output: reports/cnn_waveforms_results.csv     (per-label metrics on val set)
         checkpoints/cnn_waveforms.pt          (best model weights)
 
 Usage:
-  python scripts/train_cnn_waveforms.py
+  python scripts/5_deep_learning/cnn_waveforms_only.py
 """
 from __future__ import annotations
 

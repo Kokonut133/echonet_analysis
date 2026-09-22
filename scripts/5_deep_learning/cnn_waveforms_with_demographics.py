@@ -8,9 +8,15 @@ Input:  EchoNext_{split}_waveforms.npy  + echonext_metadata_100k.csv
 Output: reports/cnn_combined_results.csv     (per-label metrics on val set)
         reports/cnn_combined_train_log.csv   (per-epoch loss and AUROC)
         checkpoints/cnn_combined.pt          (best model weights)
+        (filenames are prefixed "cnn_combined" to avoid collisions with
+        cnn_waveforms_only.py, which writes "cnn_waveforms_*" outputs)
+
+As of this writing this script has not yet been run to completion, so no
+reports/cnn_combined_* results exist; it is exercised by
+tests/test_smoke.py::test_cnn_waveforms_with_demographics_saves_checkpoint_results_and_train_log.
 
 Usage:
-  python scripts/train_cnn_combined.py
+  python scripts/5_deep_learning/cnn_waveforms_with_demographics.py
 """
 from __future__ import annotations
 
