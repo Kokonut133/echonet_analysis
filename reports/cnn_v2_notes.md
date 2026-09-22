@@ -91,3 +91,27 @@ features) — not more waveform regularisation.
 
 See `figures/cnn_v2_training_curves.png` (train loss and val mean-AUROC vs
 epoch, v1 vs v2 overlaid, best-epoch markers).
+
+## Held-out test results (added after the final evaluation)
+
+The validation comparison above is what model selection saw. On the untouched
+test split, evaluated once per checkpoint via
+`scripts/6_evaluate/evaluate_test_set.py`, the v2 advantage does not survive:
+
+| | mean test AUROC (12 targets) | SHD (any) | LVEF ≤ 45% |
+|---|---:|---:|---:|
+| v1 (raw, no augmentation) | **0.8107** | 0.828 [0.818–0.839] | 0.880 [0.868–0.892] |
+| v2 (normalised + augmented) | 0.8042 | 0.826 [0.815–0.838] | 0.875 [0.863–0.887] |
+
+Every per-target confidence interval overlaps between the two models. v2's
++0.0010 validation edge was noise, and on test v1 is marginally ahead.
+
+**Conclusion.** Two models with the same architecture but very different
+regularisation regimes land in the same place. The v2 run clearly did what it
+was designed to do — it pushed the best epoch from 10 to 17 and kept training
+loss and validation AUROC in step for longer — yet bought no generalisation.
+That points at a ceiling in the data (echo-derived label noise, and the limits
+of what a 10-second ECG encodes about cardiac structure) rather than at
+underfitting or overfitting that more tuning would fix. The reported CNN tier
+therefore stays on v1, which is also the checkpoint used by the interpretability
+and lead-ablation analyses.
