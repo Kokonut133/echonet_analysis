@@ -1,0 +1,13 @@
+{
+  "race_material": false,
+  "race_mean_delta_auroc": -0.0021,
+  "headline_ci_excludes_zero": false,
+  "mean_delta_by_group": {
+    "all_demographics": -0.0273,
+    "age_at_ecg": -0.0189,
+    "location_setting": -0.0034,
+    "sex": -0.0026,
+    "race_ethnicity": -0.0021
+  },
+  "materiality_threshold": 0.005
+}

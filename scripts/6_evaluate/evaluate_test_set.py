@@ -51,8 +51,10 @@ from tqdm import tqdm
 from src.bootstrap import DEFAULT_N_RESAMPLES, DEFAULT_SEED, bootstrap_auroc_auprc
 from src.classifiers import standard_classifier_suite
 from src.constants import (
+    CATEGORICAL_DEMOGRAPHIC_FEATURES,
     DATASET_SUBDIR,
     DEMOGRAPHIC_FEATURES,
+    NUMERIC_DEMOGRAPHIC_FEATURES,
     METADATA_FILENAME,
     N_LEADS,
     TARGET_LABELS,
@@ -61,7 +63,7 @@ from src.constants import (
 from src.dataset import ECGDataset, load_split
 from src.evaluation import compute_binary_metrics
 from src.models import ECGConvNet
-from src.plotting import TARGET_SHORT_NAMES, TIER_ORDER
+from src.plotting import TARGET_SHORT_NAMES, TIER_LABELS, TIER_ORDER
 from src.preprocessing import build_demographic_preprocessor
 
 _sk = load_config()["training"]["sklearn"]
@@ -75,6 +77,15 @@ _CNN_INFERENCE_BATCH_SIZE = 64
 _SKLEARN_MAX_JOBS = 4  # shared 8-core box; leave headroom for other agents
 _DEFAULT_CNN_TAG = "cnn_waveforms"
 _DEFAULT_CNN_TIER = "cnn_raw_waveform"
+# Checkpoint tag -> tier name. cnn_combined was trained with demographics fused
+# into the classification head, so it forms its own rung of the ladder.
+_TIER_BY_TAG = {
+    _DEFAULT_CNN_TAG: _DEFAULT_CNN_TIER,
+    "cnn_waveforms_v2": "cnn_raw_waveform_v2",
+    "cnn_combined": "cnn_ecg_and_demographics",
+}
+# Tags whose checkpoint expects a demographic vector alongside the waveform.
+_DEMO_INPUT_TAGS = {"cnn_combined"}
 # standard_classifier_suite() keys -> sklearn class name, used to resolve the "model"
 # column for cached classical-tier predictions without refitting.
 _MODEL_CLASS_NAMES = {
@@ -85,12 +96,32 @@ _MODEL_CLASS_NAMES = {
 
 
 def cnn_tier_name(tag: str) -> str:
-    """cnn_waveforms -> cnn_raw_waveform; cnn_waveforms_v2 -> cnn_raw_waveform_v2; else suffixed."""
-    if tag == _DEFAULT_CNN_TAG:
-        return _DEFAULT_CNN_TIER
+    """Checkpoint tag -> tier name used in final_results.csv and the figures."""
+    if tag in _TIER_BY_TAG:
+        return _TIER_BY_TAG[tag]
     if tag.startswith(_DEFAULT_CNN_TAG):
         return _DEFAULT_CNN_TIER + tag[len(_DEFAULT_CNN_TAG):]
     return f"{_DEFAULT_CNN_TIER}_{tag}"
+
+
+def demo_features_for_tag(tag: str, metadata: pd.DataFrame, split: str) -> np.ndarray | None:
+    """Encoded demographics for a checkpoint that was trained with them, else None.
+
+    Reuses the encoder persisted by cnn_waveforms_with_demographics.py so the
+    column order matches exactly what the checkpoint was trained on.
+    """
+    if tag not in _DEMO_INPUT_TAGS:
+        return None
+    encoder_path = Path("checkpoints") / f"{tag}_demo_encoder.joblib"
+    if not encoder_path.exists():
+        raise FileNotFoundError(
+            f"{tag} needs demographic features but {encoder_path} is missing — "
+            "rerun scripts/5_deep_learning/cnn_waveforms_with_demographics.py"
+        )
+    encoder = joblib.load(encoder_path)
+    split_meta = metadata[metadata["split"] == split].reset_index(drop=True)
+    columns = NUMERIC_DEMOGRAPHIC_FEATURES + CATEGORICAL_DEMOGRAPHIC_FEATURES
+    return encoder.transform(split_meta.reindex(columns=columns)).astype(np.float32)
 
 
 @dataclass(frozen=True)
@@ -463,11 +494,21 @@ def run_cnn_tier(
 
     cnn_label_names = TARGET_LABELS
     test_data, _ = load_split("test", metadata, config.paths.dataset_dir, label_names=cnn_label_names)
+
+    demo = demo_features_for_tag(config.cnn_tag, metadata, "test")
+    if demo is not None:
+        if len(demo) != len(test_data.waveforms):
+            raise ValueError(
+                f"demographic rows ({len(demo)}) != waveform rows ({len(test_data.waveforms)})"
+            )
+        test_data.demo_features = demo
+    n_demo = 0 if demo is None else demo.shape[1]
+
     test_ds = ECGDataset(test_data)
     loader = DataLoader(test_ds, batch_size=_CNN_INFERENCE_BATCH_SIZE, shuffle=False, num_workers=0)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = ECGConvNet(n_leads=N_LEADS, n_labels=len(cnn_label_names), n_demo_features=0)
+    model = ECGConvNet(n_leads=N_LEADS, n_labels=len(cnn_label_names), n_demo_features=n_demo)
     state_dict = torch.load(config.paths.checkpoint_path, map_location=device)
     model.load_state_dict(state_dict)
     model.to(device)
@@ -491,29 +532,65 @@ def run_cnn_tier(
     return rows, y_true, y_prob, cnn_label_names, tier, False
 
 
-def include_default_cnn_if_missing(config: Config, all_rows: list[dict], current_tier: str) -> None:
-    """When evaluating a non-default CNN checkpoint, also surface the default (v1) CNN's cached
-    results in final_results.csv (if available) so multiple checkpoints appear side by side."""
-    if current_tier == _DEFAULT_CNN_TIER:
-        return
-    cached = load_cached_predictions(_DEFAULT_CNN_TIER, config.paths.predictions_dir)
-    if cached is None:
-        return
-    print(f"\n  Also including cached {_DEFAULT_CNN_TIER}_test.npz for comparison")
-    rows = _rows_from_cache(
-        _DEFAULT_CNN_TIER, cached, config.targets, lambda i, t: "ECGConvNet",
-        config.n_bootstrap, config.bootstrap_seed,
-    )
-    all_rows.extend(rows)
+def include_other_cached_model_tiers(config: Config, all_rows: list[dict]) -> None:
+    """Add rows for every other model tier that has cached test predictions.
+
+    A run evaluates one checkpoint, but final_results.csv should list every model
+    scored so far so the tiers can be compared side by side. Any
+    reports/predictions/*_test.npz whose tier is not already in `all_rows`
+    contributes rows here — metrics and bootstrap CIs are recomputed from the
+    cached probabilities, so nothing is refit.
+    """
+    present = {row["tier"] for row in all_rows}
+    for path in sorted(config.paths.predictions_dir.glob("*_test.npz")):
+        tier = path.name[: -len("_test.npz")]
+        if tier in present:
+            continue
+        cached = load_cached_predictions(tier, config.paths.predictions_dir)
+        if cached is None:
+            continue
+        model_names = cached.get("model_names")
+        if model_names is None:
+            resolve = lambda i, t: "ECGConvNet"  # noqa: E731 - CNN tiers store no model names
+        else:
+            resolve = lambda i, t, _m=model_names: str(_m[i])
+        print(f"\n  Also including cached {path.name} (tier={tier})")
+        all_rows.extend(
+            _rows_from_cache(
+                tier, cached, config.targets, resolve,
+                config.n_bootstrap, config.bootstrap_seed,
+            )
+        )
+
+
+def format_auroc_pm(auroc: float, ci_low: float, ci_high: float) -> str:
+    """AUROC as `0.828 ± 0.011`, where the margin is half the bootstrap CI width.
+
+    The percentile bootstrap intervals are mildly asymmetric, so the margin is
+    the half-width rather than one arm; the exact bounds stay in
+    reports/final_results.csv.
+    """
+    if any(pd.isna(v) for v in (auroc, ci_low, ci_high)):
+        return "—"
+    return f"{auroc:.3f} ± {(ci_high - ci_low) / 2:.3f}"
 
 
 def write_summary_markdown(results_df: pd.DataFrame, targets: list[str], output_path: Path) -> None:
     present = set(results_df["tier"].unique())
     tiers_present = [t for t in TIER_ORDER if t in present]
     tiers_present += [t for t in sorted(present) if t not in tiers_present]
-    header = "| target | " + " | ".join(tiers_present) + " |"
+    header = "| target | " + " | ".join(TIER_LABELS.get(t, t) for t in tiers_present) + " |"
     divider = "|---" * (len(tiers_present) + 1) + "|"
-    lines = [header, divider]
+    lines = [
+        "# Held-out test results",
+        "",
+        "Test-split AUROC ± half the width of a 1000-resample 95% percentile "
+        "bootstrap interval. Exact bounds, AUPRC and balanced accuracy are in "
+        "`final_results.csv`.",
+        "",
+        header,
+        divider,
+    ]
 
     for target in targets:
         if target not in results_df["target"].unique():
@@ -525,7 +602,9 @@ def write_summary_markdown(results_df: pd.DataFrame, targets: list[str], output_
                 cells.append("—")
             else:
                 r = match.iloc[0]
-                cells.append(f"{r['auroc']:.3f} [{r['auroc_ci_low']:.3f}–{r['auroc_ci_high']:.3f}]")
+                cells.append(
+                    format_auroc_pm(r["auroc"], r["auroc_ci_low"], r["auroc_ci_high"])
+                )
         lines.append("| " + " | ".join(cells) + " |")
 
     output_path.write_text("\n".join(lines) + "\n")
@@ -575,7 +654,7 @@ def run_evaluation(config: Config) -> pd.DataFrame:
     all_rows.extend(cnn_rows)
     if not cnn_cached:
         save_predictions(cnn_tier, cnn_true, cnn_prob, cnn_label_names, config.paths.predictions_dir)
-    include_default_cnn_if_missing(config, all_rows, cnn_tier)
+    include_other_cached_model_tiers(config, all_rows)
 
     results_df = pd.DataFrame(all_rows)
     target_rank = {t: i for i, t in enumerate(config.targets)}

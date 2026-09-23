@@ -11,8 +11,12 @@ Output: reports/cnn_combined_results.csv     (per-label metrics on val set)
         (filenames are prefixed "cnn_combined" to avoid collisions with
         cnn_waveforms_only.py, which writes "cnn_waveforms_*" outputs)
 
-As of this writing this script has not yet been run to completion, so no
-reports/cnn_combined_* results exist; it is exercised by
+Trains for up to 30 epochs (patience 8), matching the cnn_waveforms_v2 budget.
+Also writes checkpoints/cnn_combined_demo_encoder.joblib and
+reports/cnn_combined_demo_features.json so scripts/9_ablation can reproduce the
+demographic encoding and zero out one feature group at a time.
+
+Smoke-tested by
 tests/test_smoke.py::test_cnn_waveforms_with_demographics_saves_checkpoint_results_and_train_log.
 
 Usage:
@@ -20,9 +24,11 @@ Usage:
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import joblib
 import pandas as pd
 
 from src.constants import DATASET_SUBDIR, METADATA_FILENAME, N_LEADS, TARGET_LABELS
@@ -50,7 +56,14 @@ def build_run_config() -> RunConfig:
         metadata_path=dataset_dir / METADATA_FILENAME,
         output_dir=project_root / "reports",
         checkpoint_dir=project_root / "checkpoints",
-        train_config=TrainConfig(checkpoint_dir=project_root / "checkpoints"),
+        train_config=TrainConfig(
+            checkpoint_dir=project_root / "checkpoints",
+            # Matches the cnn_waveforms_v2 budget so the two runs are comparable
+            # and the run fits in a few hours on one GPU.
+            n_epochs=30,
+            patience=8,
+            num_workers=2,
+        ),
     )
 
 
@@ -72,6 +85,18 @@ def train_cnn_on_waveforms_and_demographics(config: RunConfig) -> None:
 
     n_demo = train_data.demo_features.shape[1]
     print(f"\nDemographic feature dimensionality: {n_demo}")
+
+    # Persist the fitted encoder and its column names: the demographic-ablation
+    # analysis has to reproduce this exact encoding to zero out one feature
+    # group at a time.
+    config.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    joblib.dump(demo_encoder, config.checkpoint_dir / "cnn_combined_demo_encoder.joblib")
+    demo_feature_names = [str(n) for n in demo_encoder.get_feature_names_out()]
+    config.output_dir.mkdir(parents=True, exist_ok=True)
+    (config.output_dir / "cnn_combined_demo_features.json").write_text(
+        json.dumps(demo_feature_names, indent=2)
+    )
+    print(f"Demographic feature names: {demo_feature_names}")
 
     train_labels = train_data.labels
     train_ds = ECGDataset(train_data)

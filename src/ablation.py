@@ -98,3 +98,57 @@ def aggregate_by_group(values: np.ndarray | Sequence[float], groups: Sequence[st
     order = list(dict.fromkeys(groups))
     series = pd.Series(values, index=groups).groupby(level=0).sum()
     return series.reindex(order)
+
+
+# --- demographic ablation (scripts/9_ablation/demographic_ablation.py) -------
+
+DEMOGRAPHIC_GROUPS: tuple[str, ...] = (
+    "age_at_ecg",
+    "sex",
+    "race_ethnicity",
+    "location_setting",
+)
+
+# Colour per demographic group, plus the "all demographics" bar.
+DEMOGRAPHIC_GROUP_COLORS: dict[str, str] = {
+    "all_demographics": "#7C3AED",
+    "age_at_ecg": "#2CA6A4",
+    "sex": "#60A5FA",
+    "race_ethnicity": "#E0457B",
+    "location_setting": "#F4A340",
+}
+
+
+def demographic_group_indices(feature_names: Sequence[str]) -> dict[str, list[int]]:
+    """Map each demographic group to its column indices in the encoded vector.
+
+    `feature_names` comes from the persisted ColumnTransformer
+    (`get_feature_names_out()`), e.g. 'numeric__age_at_ecg' or
+    'categorical__race_ethnicity_white'. Matching is by the group name
+    appearing after the transformer prefix, longest name first so that
+    'location_setting' is not shadowed by a shorter group.
+    """
+    groups: dict[str, list[int]] = {g: [] for g in DEMOGRAPHIC_GROUPS}
+    for i, raw in enumerate(feature_names):
+        bare = raw.split("__", 1)[-1]
+        for group in sorted(DEMOGRAPHIC_GROUPS, key=len, reverse=True):
+            if bare == group or bare.startswith(f"{group}_"):
+                groups[group].append(i)
+                break
+    missing = [g for g, idx in groups.items() if not idx]
+    if missing:
+        raise ValueError(f"No encoded columns found for demographic group(s): {missing}")
+    return groups
+
+
+def zero_demographic_columns(demo: torch.Tensor, column_indices: Sequence[int]) -> torch.Tensor:
+    """Copy of `demo` with the given columns set to zero.
+
+    Zero is the neutral value for both encodings here: a one-hot block of zeros
+    carries no category information, and the numeric age column is standardised,
+    so zero is the training-set mean age.
+    """
+    out = demo.clone()
+    if column_indices:
+        out[:, list(column_indices)] = 0.0
+    return out

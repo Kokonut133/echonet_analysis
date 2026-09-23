@@ -47,7 +47,14 @@ FINAL_RESULTS_COLUMNS = [
     "balanced_acc", "prevalence", "n_positive", "n_total",
 ]
 
-TIER_ORDER = ["demographics", "tabular_ecg", "waveform_features", "combined", "cnn_raw_waveform"]
+TIER_ORDER = [
+    "demographics",
+    "tabular_ecg",
+    "waveform_features",
+    "combined",
+    "cnn_raw_waveform",
+    "cnn_ecg_and_demographics",
+]
 
 TIER_LABELS = {
     "demographics": "Demographics only",
@@ -55,6 +62,8 @@ TIER_LABELS = {
     "waveform_features": "Hand-crafted waveform features",
     "combined": "Tabular + waveform features",
     "cnn_raw_waveform": "1D CNN on raw waveform",
+    "cnn_ecg_and_demographics": "1D CNN on raw waveform + demographics",
+    "cnn_raw_waveform_v2": "1D CNN, normalised + augmented",
 }
 
 # muted grey -> blue -> teal -> purple -> accent orange (for the CNN tier)
@@ -64,6 +73,8 @@ TIER_COLORS_LIGHT = {
     "waveform_features": "#1baf7a",
     "combined": "#4a3aa7",
     "cnn_raw_waveform": "#eb6834",
+    "cnn_ecg_and_demographics": "#b4308f",
+    "cnn_raw_waveform_v2": "#b8501f",
 }
 TIER_COLORS_DARK = {
     "demographics": "#a3a7ad",
@@ -71,6 +82,8 @@ TIER_COLORS_DARK = {
     "waveform_features": "#199e70",
     "combined": "#9085e9",
     "cnn_raw_waveform": "#d95926",
+    "cnn_ecg_and_demographics": "#c964ad",
+    "cnn_raw_waveform_v2": "#c2703f",
 }
 
 # Preserves clinical-importance ordering used throughout the project (see progress_log.md).
@@ -484,7 +497,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         <th data-key="tier_label">Tier</th>
         <th data-key="model">Model</th>
         <th data-key="split">Split</th>
-        <th data-key="auroc" class="num sorted">AUROC</th>
+        <th data-key="auroc" class="num sorted">AUROC (&plusmn; ½ CI)</th>
         <th data-key="auprc" class="num">AUPRC</th>
         <th data-key="balanced_acc" class="num">Bal. acc.</th>
         <th data-key="prevalence" class="num">Prevalence</th>
@@ -642,6 +655,15 @@ function fmtNum(v, digits) {
   return v === null || v === undefined ? "" : Number(v).toFixed(digits);
 }
 
+// "0.828 \u00b1 0.011" \u2014 margin is half the bootstrap CI width, which is what the
+// \u00b1 notation implies; the exact (slightly asymmetric) bounds stay in the CSV.
+function fmtPm(v, lo, hi) {
+  if (v === null || v === undefined) return "";
+  const base = Number(v).toFixed(3);
+  if (lo === null || lo === undefined || hi === null || hi === undefined) return base;
+  return base + " \u00b1 " + ((Number(hi) - Number(lo)) / 2).toFixed(3);
+}
+
 function buildTable() {
   const tbody = document.querySelector("#results-table tbody");
   const rows = RESULTS.filter((r) => !state.hiddenTiers.has(r.tier));
@@ -663,7 +685,7 @@ function buildTable() {
       "<td><span class='tier-dot' style='background:" + tierColor(r.tier) + "'></span>" + r.tier_label + "</td>" +
       "<td>" + r.model + "</td>" +
       "<td>" + r.split + "</td>" +
-      "<td class='num'>" + fmtNum(r.auroc, 3) + "</td>" +
+      "<td class='num'>" + fmtPm(r.auroc, r.auroc_ci_low, r.auroc_ci_high) + "</td>" +
       "<td class='num'>" + fmtNum(r.auprc, 3) + "</td>" +
       "<td class='num'>" + fmtNum(r.balanced_acc, 3) + "</td>" +
       "<td class='num'>" + fmtPct(r.prevalence) + "</td>" +

@@ -41,3 +41,44 @@ Two independent analyses of "which ECG leads / features carry the signal":
    better, retaining 86-92% of full AUROC, on par with the limb-only (90-96%)
    and chest-only (89-94%) 6-lead subsets — so if electrode count must be
    cut, the 4-lead reduced set is a much safer fallback than any single lead.
+
+---
+
+## Demographic ablation — the ECG+demographics CNN
+
+`scripts/9_ablation/demographic_ablation.py` zeroes the 13 encoded demographic
+inputs of the `cnn_combined` checkpoint at inference — the whole block, then one
+group at a time — on the held-out test split. Zero is the neutral value for both
+encodings here (a one-hot block of zeros carries no category; the age column is
+standardised, so zero is the training mean). As with the lead ablation, the model
+is not retrained.
+
+| Zeroed input | Mean ΔAUROC (12 targets) | Aortic stenosis |
+|---|---:|---:|
+| All demographics | −0.0273 | −0.147 |
+| **Age** | **−0.0189** | **−0.145** |
+| Care setting | −0.0034 | −0.004 |
+| Sex | −0.0026 | +0.001 |
+| Race / ethnicity | −0.0021 | +0.003 |
+
+1. **Demographics are worth 0.027 AUROC, and age is 69% of it.** Removing age
+   alone costs almost as much as removing everything. Sex, care setting and
+   race/ethnicity together account for under 0.009.
+2. **Age is not a diffuse effect — it is almost entirely one diagnosis.** Zeroing
+   age costs 0.145 AUROC on aortic stenosis, an order of magnitude more than on
+   any other target (next largest: 0.02). This is the same target where
+   demographics-only beat the waveform-only CNN, and where fusing demographics in
+   recovered +0.050 on test. Age-related valve calcification is doing the work,
+   and the model is using it exactly where clinical knowledge says it should.
+3. **Race/ethnicity is not a material input.** Zeroing it changes mean AUROC by
+   −0.0021, and on the headline SHD target the paired bootstrap interval spans
+   zero (−0.0024 to +0.0009), as it does on aortic stenosis (−0.0044 to +0.0101).
+   The model's performance therefore does not depend on the patient's recorded
+   race/ethnicity — reassuring for a clinical model, and the reason no dedicated
+   figure is included for it.
+4. **The care-setting leakage concern did not materialise either.** `location_setting`
+   (emergency / inpatient / outpatient / procedural) was the input most at risk of
+   being a proxy for "this patient is already known to be sick", but zeroing it
+   costs only 0.0034 mean AUROC with an interval spanning zero on the headline
+   target (−0.0019 to +0.0022). The fused model is reading physiology and age, not
+   care context.

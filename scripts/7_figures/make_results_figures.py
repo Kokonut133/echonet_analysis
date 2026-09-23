@@ -40,7 +40,7 @@ HEADLINE_TARGETS = [
     "aortic_stenosis_moderate_or_greater_flag",
 ]
 SUBGROUP_TARGETS = ["shd_moderate_or_greater_flag", "lvef_lte_45_flag"]
-SUBGROUP_TIERS = ["combined", "cnn_raw_waveform"]
+SUBGROUP_TIERS = ["combined", "cnn_raw_waveform", "cnn_ecg_and_demographics"]
 SENSITIVITY_LEVELS = [0.80, 0.90, 0.95]
 
 LEAD_LAYOUT = [
@@ -137,8 +137,9 @@ def make_hero_information_ladder(results: pd.DataFrame) -> None:
     )
     fig.text(
         0.02, 0.955,
-        "Test-set AUROC for each structural heart disease target, moving from demographics alone up to a\n"
-        "deep-learning model reading the raw 12-lead ECG. Dots = point estimate, bars = 95% CI.",
+        "Test-set AUROC for each structural heart disease target, moving from demographics alone, through\n"
+        "hand-engineered ECG features, up to a deep model reading the raw 12-lead signal — with and without\n"
+        "demographics fused back in. Dots = point estimate, bars = 95% CI.",
         fontsize=10.5, color="#4B5563", ha="left", va="top",
     )
 
@@ -232,7 +233,7 @@ def make_operating_points(predictions: dict[str, dict]) -> None:
     x = np.arange(len(SENSITIVITY_LEVELS))
     bar_width = 0.24
 
-    fig, axes = plt.subplots(1, 4, figsize=(17, 4.8), sharey=True)
+    fig, axes = plt.subplots(1, 4, figsize=(14, 3.6), sharey=True)
 
     for ax, target in zip(axes, HEADLINE_TARGETS):
         y_true_full, y_prob_full, valid = target_column(cnn, target)
@@ -326,7 +327,7 @@ def make_subgroup_figure(subgroup_df: pd.DataFrame) -> None:
         "race_ethnicity": "Race / ethnicity", "location_setting": "Care setting",
     }
 
-    fig, axes = plt.subplots(len(SUBGROUP_TARGETS), len(subgroup_types), figsize=(18, 8.6))
+    fig, axes = plt.subplots(len(SUBGROUP_TARGETS), len(subgroup_types), figsize=(15, 6.4))
 
     for ti, target in enumerate(SUBGROUP_TARGETS):
         for si, subgroup_type in enumerate(subgroup_types):

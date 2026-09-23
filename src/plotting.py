@@ -10,7 +10,14 @@ TIER_ORDER: list[str] = [
     "waveform_features",
     "combined",
     "cnn_raw_waveform",
+    "cnn_ecg_and_demographics",
 ]
+
+# Variants that are model iterations rather than rungs of the information
+# ladder: they are reported in tables but left out of the ladder figures.
+TIER_VARIANTS: dict[str, str] = {
+    "cnn_raw_waveform_v2": "CNN v2 (normalised + augmented)",
+}
 
 TIER_LABELS: dict[str, str] = {
     "demographics": "Demographics",
@@ -18,6 +25,8 @@ TIER_LABELS: dict[str, str] = {
     "waveform_features": "Waveform features",
     "combined": "Combined",
     "cnn_raw_waveform": "CNN (raw ECG)",
+    "cnn_ecg_and_demographics": "CNN (raw ECG + demographics)",
+    **{k: v for k, v in TIER_VARIANTS.items()},
 }
 
 TIER_DESCRIPTIONS: dict[str, str] = {
@@ -26,16 +35,20 @@ TIER_DESCRIPTIONS: dict[str, str] = {
     "waveform_features": "hand-crafted signal features, no demographics",
     "combined": "ECG metadata + waveform features",
     "cnn_raw_waveform": "deep learning directly on the raw 12-lead signal",
+    "cnn_ecg_and_demographics": "raw 12-lead signal fused with age, sex, race and care setting",
+    "cnn_raw_waveform_v2": "same architecture, per-record normalisation + augmentation",
 }
 
-# 5-colour palette keyed by tier; the CNN (the final rung of the ladder) is the
-# accent colour so it visually "wins" wherever tiers are compared.
+# Palette keyed by tier, ordered along the information ladder; the two CNN rungs
+# carry the accent colours so they read as the top of the ladder.
 TIER_COLORS: dict[str, str] = {
     "demographics": "#9CA3AF",
     "tabular_ecg": "#60A5FA",
     "waveform_features": "#2CA6A4",
     "combined": "#F4A340",
     "cnn_raw_waveform": "#E0457B",
+    "cnn_ecg_and_demographics": "#7C3AED",
+    "cnn_raw_waveform_v2": "#B91C5C",
 }
 
 TARGET_SHORT_NAMES: dict[str, str] = {

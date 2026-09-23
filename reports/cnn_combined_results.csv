@@ -1,0 +1,13 @@
+label,auroc,auprc,balanced_acc,n_positive,n_total,prevalence
+shd_moderate_or_greater_flag,0.8279,0.8002,0.7458,1990,4626,0.4302
+lvef_lte_45_flag,0.8847,0.7029,0.8039,866,4626,0.1872
+lvwt_gte_13_flag,0.7482,0.3952,0.674,877,4626,0.1896
+aortic_stenosis_moderate_or_greater_flag,0.8783,0.4078,0.7928,252,4626,0.0545
+aortic_regurgitation_moderate_or_greater_flag,0.7745,0.0659,0.6891,62,4626,0.0134
+mitral_regurgitation_moderate_or_greater_flag,0.8359,0.2611,0.769,282,4626,0.061
+tricuspid_regurgitation_moderate_or_greater_flag,0.8608,0.3313,0.7733,305,4626,0.0659
+pulmonary_regurgitation_moderate_or_greater_flag,0.8015,0.0227,0.6267,21,4626,0.0045
+rv_systolic_dysfunction_moderate_or_greater_flag,0.8834,0.4849,0.8087,368,4626,0.0796
+pericardial_effusion_moderate_large_flag,0.7637,0.0509,0.6876,52,4626,0.0112
+pasp_gte_45_flag,0.7975,0.374,0.7185,581,4626,0.1256
+tr_max_gte_32_flag,0.8151,0.2239,0.7409,267,4626,0.0577

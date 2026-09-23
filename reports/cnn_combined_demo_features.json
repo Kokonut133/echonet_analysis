@@ -1,0 +1,15 @@
+[
+  "numeric__age_at_ecg",
+  "categorical__sex_female",
+  "categorical__sex_male",
+  "categorical__race_ethnicity_asian",
+  "categorical__race_ethnicity_black",
+  "categorical__race_ethnicity_hispanic",
+  "categorical__race_ethnicity_other",
+  "categorical__race_ethnicity_unknown",
+  "categorical__race_ethnicity_white",
+  "categorical__location_setting_emergency",
+  "categorical__location_setting_inpatient",
+  "categorical__location_setting_outpatient",
+  "categorical__location_setting_procedural"
+]

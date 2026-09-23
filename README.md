@@ -11,25 +11,26 @@ Predicting echocardiogram-confirmed structural heart disease from 12-lead ECGs �
 
 ## TL;DR
 
-This project predicted 12 echocardiogram-confirmed structural heart disease outcomes — from broad "any moderate+ disease" down to specific valve and chamber findings — using 100,000 12-lead ECGs from the EchoNext PhysioNet dataset. Five progressively richer inputs were compared on the same targets and splits: demographics alone, demographics plus standard ECG measurements, 180 hand-crafted waveform features, both combined, and a 1D CNN on the raw waveform. Each added layer of signal improved discrimination on held-out test data, and the CNN came out on top (0.828 AUROC for any moderate-or-greater disease, 0.880 for reduced ejection fraction) — but a transparent 180-feature gradient-boosting model landed within 0.02 of it, and on one target beat it outright. Per-target numbers with confidence intervals, interpretability, lead ablation and subgroup breakdowns are below.
+This project predicted 12 echocardiogram-confirmed structural heart disease outcomes — from broad "any moderate+ disease" down to specific valve and chamber findings — using 100,000 12-lead ECGs from the EchoNext PhysioNet dataset. Five progressively richer inputs were compared on the same targets and splits: demographics alone, demographics plus standard ECG measurements, 180 hand-crafted waveform features, both combined, and a 1D CNN on the raw waveform. Each added layer of signal improved discrimination on held-out test data, and a CNN reading the raw waveform alongside demographics came out on top (0.836 AUROC for any moderate-or-greater disease, 0.888 for reduced ejection fraction) — but a transparent 180-feature gradient-boosting model landed within 0.02 of the waveform-only CNN, and beat it outright on aortic stenosis. Chasing down *why* that one target inverted is the most interesting part of the project. Per-target numbers with confidence intervals, interpretability, lead and demographic ablations, and subgroup breakdowns are below.
 
 ## Key results
 
-Held-out **test** split (5,442 ECGs, never used for training or model selection), AUROC with 95% bootstrap confidence intervals. Full 12-target table: [`reports/final_results_summary.md`](reports/final_results_summary.md).
+Held-out **test** split (5,442 ECGs, never used for training or model selection). AUROC ± half the width of a 95% bootstrap confidence interval. Full 12-target table: [`reports/final_results_summary.md`](reports/final_results_summary.md).
 
-| Input | SHD (any moderate+) | LVEF ≤ 45% | RV dysfunction |
+| Input | SHD (any moderate+) | LVEF ≤ 45% | Aortic stenosis |
 |---|---|---|---|
-| Demographics only (age, sex, race, setting) | 0.696 [0.683–0.709] | 0.684 [0.665–0.702] | 0.663 [0.636–0.687] |
-| + standard ECG measurements | 0.763 [0.751–0.776] | 0.794 [0.779–0.810] | 0.796 [0.774–0.817] |
-| 180 hand-crafted waveform features | 0.796 [0.785–0.809] | 0.850 [0.838–0.862] | 0.845 [0.826–0.865] |
-| Combined tabular + waveform | 0.815 [0.804–0.827] | 0.863 [0.851–0.876] | 0.855 [0.836–0.874] |
-| **1D CNN on raw 12-lead waveforms** | **0.828 [0.818–0.839]** | **0.880 [0.868–0.892]** | **0.878 [0.861–0.894]** |
+| Demographics only (age, sex, race, setting) | 0.696 ± 0.013 | 0.684 ± 0.018 | 0.844 ± 0.021 |
+| + standard ECG measurements | 0.763 ± 0.013 | 0.794 ± 0.016 | 0.843 ± 0.020 |
+| 180 hand-crafted waveform features | 0.796 ± 0.012 | 0.850 ± 0.012 | 0.757 ± 0.025 |
+| Combined tabular + waveform | 0.815 ± 0.012 | 0.863 ± 0.013 | 0.870 ± 0.018 |
+| 1D CNN on raw 12-lead waveforms | 0.828 ± 0.011 | 0.880 ± 0.012 | 0.829 ± 0.023 |
+| **1D CNN, raw waveforms + demographics** | **0.836 ± 0.011** | **0.888 ± 0.011** | **0.879 ± 0.017** |
 
 Three things this table is meant to show:
 
-1. **Each rung of the ladder earns its place.** Going from who the patient is to what their ECG looks like is worth ~0.13 AUROC on the broad SHD target; the ordering holds on 10 of the 12 targets.
-2. **Deep learning wins, but modestly.** The CNN beats the transparent feature-based model by 0.013–0.023 AUROC, and on several targets their confidence intervals overlap. A 180-feature gradient-boosting model you can inspect gets most of the way there.
-3. **One target inverts the ladder.** For aortic stenosis, demographics alone (0.844) beat raw waveform features (0.757) and the combined model (0.870) beats the CNN (0.829) — age carries that label, and the CNN never sees age. Worth knowing before assuming a single architecture should win everywhere.
+1. **Each rung of the ladder earns its place.** Going from who the patient is to what their ECG looks like is worth ~0.14 AUROC on the broad SHD target, and mean AUROC across all 12 targets rises monotonically up the ladder: 0.658 → 0.722 → 0.770 → 0.796 → 0.811 → 0.828.
+2. **Deep learning wins, but modestly.** The waveform-only CNN beats the transparent feature-based model by 0.013–0.023 AUROC, and on several targets their confidence intervals overlap. A 180-feature gradient-boosting model you can inspect gets most of the way there.
+3. **One target exposed why — and the fix confirmed it.** Aortic stenosis was the one place the ladder inverted: demographics alone (0.844) beat raw waveform features (0.757), and the interpretable model (0.870) beat the CNN (0.829), because patient age carries that diagnosis and a waveform-only CNN never sees age. Fusing demographics into the CNN's head recovers +0.050 on exactly that target and puts it back on top (0.879). The [demographic ablation](reports/ablation_notes.md) closes the loop: removing age alone costs 0.145 AUROC there, against at most 0.02 on any other target.
 
 ## What the model sees
 
@@ -45,9 +46,9 @@ Side-by-side 12-lead traces for a structural-heart-disease-positive and a negati
 | 2. Feature extraction | 180 per-lead time/frequency statistics, cached as `.npy` | `scripts/2_preprocess/extract_waveform_features.py` |
 | 3. Baseline | Demographics-only models | `scripts/3_baselines/demographic_only.py` |
 | 4. Classical ML | LogReg / RandomForest / GradientBoosting on tabular, waveform and combined features | `scripts/4_classical_ml/compare_ecg_feature_sets.py` |
-| 5. Deep learning | 1D ResNet on raw 12-lead waveforms, plus a normalized + augmented variant | `scripts/5_deep_learning/cnn_waveforms_only.py`, `cnn_waveforms_v2.py` |
+| 5. Deep learning | 1D ResNet on raw 12-lead waveforms; variants with demographics fused in, and with normalization + augmentation | `scripts/5_deep_learning/cnn_waveforms_only.py`, `cnn_waveforms_with_demographics.py`, `cnn_waveforms_v2.py` |
 | 6. Evaluation | Held-out test set, bootstrap CIs, all result figures | `scripts/6_evaluate/`, `scripts/7_figures/` |
-| 7. Analysis | Saliency, lead ablation, feature importance, interactive site | `scripts/8_interpretability/`, `scripts/9_ablation/`, `scripts/10_site/` |
+| 7. Analysis | Saliency, lead and demographic ablation, feature importance, interactive site | `scripts/8_interpretability/`, `scripts/9_ablation/`, `scripts/10_site/` |
 
 ## Further analyses
 
@@ -61,10 +62,15 @@ SmoothGrad input-gradient saliency and Grad-CAM (on the CNN's final residual sta
 
 Zeroing one lead at a time at inference (without retraining) measures how much the trained CNN leans on each of the 12 leads. This is a sensitivity analysis, not a "trained on fewer leads" result — see `scripts/9_ablation/lead_ablation.py` for the distinction.
 
+### Which demographics does the fused model use?
+![Demographic ablation](figures/ablation/demographic_ablation.png)
+
+Zeroing each demographic input of the fused CNN at inference shows that demographics are worth 0.027 mean AUROC and **age is 69% of it** — and that age is not a diffuse effect but almost entirely one diagnosis (−0.145 on aortic stenosis, against at most 0.02 elsewhere), matching the clinical picture of age-related valve calcification. Two inputs that could have been problematic are not load-bearing: zeroing race/ethnicity changes mean AUROC by −0.002, and care setting — the input most at risk of proxying "this patient is already known to be sick" — by −0.003, both with paired bootstrap intervals spanning zero on the headline target. Details in [`reports/ablation_notes.md`](reports/ablation_notes.md).
+
 ### Subgroup fairness
 ![Subgroup AUROC](figures/results/subgroup_auroc.png)
 
-AUROC broken out by sex, age band, race/ethnicity and care setting. Performance is even across sex and race/ethnicity (differences within overlapping confidence intervals), but drops for the oldest patients on the broad SHD target — 0.77 for ≥80 against 0.84 for under-50s — which is the kind of gap an aggregate number hides. Numbers in [`reports/subgroup_results.csv`](reports/subgroup_results.csv).
+AUROC broken out by sex, age band, race/ethnicity and care setting. Performance is even across sex and race/ethnicity (differences within overlapping confidence intervals), but drops for the oldest patients on the broad SHD target — 0.764 for ≥80 against 0.845 for 50–65 — the kind of gap an aggregate number hides. Notably, **giving the model age as an input does not close that gap**: the fused CNN shows the same ≥80 deficit as the waveform-only model, which makes sense once you notice that within the oldest band nearly everyone is at risk (64% prevalence), so age has little left to discriminate on. Higher average accuracy and fairer accuracy are not the same objective. Numbers in [`reports/subgroup_results.csv`](reports/subgroup_results.csv).
 
 ### Operating points
 ![Operating points](figures/results/operating_points.png)
@@ -109,6 +115,7 @@ python scripts/2_preprocess/extract_waveform_features.py
 python scripts/3_baselines/demographic_only.py
 python scripts/4_classical_ml/compare_ecg_feature_sets.py
 python scripts/5_deep_learning/cnn_waveforms_only.py
+python scripts/5_deep_learning/cnn_waveforms_with_demographics.py  # best model
 python scripts/5_deep_learning/cnn_waveforms_v2.py      # normalized + augmented variant
 python scripts/6_evaluate/evaluate_test_set.py
 
