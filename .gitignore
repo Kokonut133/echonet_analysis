@@ -9,3 +9,9 @@ __pycache__
 # agent progress logs + model checkpoints
 progress/
 checkpoints/
+
+# ephemeral run state and optuna study databases (regenerable)
+reports/serial_state.json
+reports/night_state.json
+reports/serial_stage_result_*.json
+reports/*_study.db
