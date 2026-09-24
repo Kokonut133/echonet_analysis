@@ -83,9 +83,12 @@ _TIER_BY_TAG = {
     _DEFAULT_CNN_TAG: _DEFAULT_CNN_TIER,
     "cnn_waveforms_v2": "cnn_raw_waveform_v2",
     "cnn_combined": "cnn_ecg_and_demographics",
+    "cnn_serial": "cnn_cosine_schedule",
 }
 # Tags whose checkpoint expects a demographic vector alongside the waveform.
-_DEMO_INPUT_TAGS = {"cnn_combined"}
+# Both the cnn_combined script and the overnight runner's long-run stage train
+# the fused architecture, so their checkpoints need the demographic vector.
+_DEMO_INPUT_TAGS = {"cnn_combined", "cnn_serial"}
 # standard_classifier_suite() keys -> sklearn class name, used to resolve the "model"
 # column for cached classical-tier predictions without refitting.
 _MODEL_CLASS_NAMES = {

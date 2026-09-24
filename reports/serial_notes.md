@@ -25,7 +25,7 @@ SHD-composite AUROC mean = **0.8386** (was 0.8392 over 4 folds).
 
 ## Stage 5 — held-out test evaluation of the long-run model
 
-Scored once on the official test split as tier `cnn_raw_waveform_cnn_serial`.
+Scored once on the official test split as tier `cnn_cosine_schedule`.
 Per-target change against the previous best model (`cnn_ecg_and_demographics`),
 with the change expressed in units of the fold-to-fold standard deviation measured
 in stage 1:
@@ -120,7 +120,10 @@ are now ruled out as the explanation.
    baseline is the single-run fused model's val SHD AUROC of 0.8279, which the long
    run beat from epoch 5 on. Gate repointed at the val baseline; the k-fold test
    mean is retained in the code as a reference only.
-3. The stage-1 `--only-fold` path and the tier-naming for a late checkpoint both
-   work but produce the awkward tier name `cnn_raw_waveform_cnn_serial`, because
-   `cnn_tier_name()` has no mapping for the `cnn_serial` tag. Cosmetic; left as is
-   so the existing CSV is not rewritten.
+3. The `cnn_serial` checkpoint tag had no entry in `cnn_tier_name()`, so it fell
+   through to the generic branch and produced the tier name
+   `cnn_raw_waveform_cnn_serial`. Fixed by registering the tag in
+   `evaluate_test_set.py` (tier `cnn_cosine_schedule`, and added to the set of
+   tags whose checkpoints carry demographic features), which also removed the
+   need for the `run_final_eval.py` wrapper that existed only to patch that set
+   at runtime.

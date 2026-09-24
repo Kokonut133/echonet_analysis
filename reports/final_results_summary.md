@@ -2,7 +2,7 @@
 
 Test-split AUROC ± half the width of a 1000-resample 95% percentile bootstrap interval. Exact bounds, AUPRC and balanced accuracy are in `final_results.csv`.
 
-| target | Demographics | + ECG metadata | Waveform features | Combined | CNN (raw ECG) | CNN (raw ECG + demographics) | cnn_raw_waveform_cnn_serial | CNN v2 (normalised + augmented) |
+| target | Demographics | + ECG metadata | Waveform features | Combined | CNN (raw ECG) | CNN (raw ECG + demographics) | CNN (warmup + cosine schedule) | CNN v2 (normalised + augmented) |
 |---|---|---|---|---|---|---|---|---|
 | Structural heart disease (any) | 0.696 ± 0.013 | 0.763 ± 0.013 | 0.796 ± 0.012 | 0.815 ± 0.012 | 0.828 ± 0.011 | 0.836 ± 0.011 | 0.839 ± 0.011 | 0.826 ± 0.011 |
 | LVEF ≤ 45% | 0.684 ± 0.018 | 0.794 ± 0.016 | 0.850 ± 0.012 | 0.863 ± 0.013 | 0.880 ± 0.012 | 0.888 ± 0.011 | 0.892 ± 0.011 | 0.875 ± 0.012 |

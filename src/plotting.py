@@ -17,6 +17,7 @@ TIER_ORDER: list[str] = [
 # ladder: they are reported in tables but left out of the ladder figures.
 TIER_VARIANTS: dict[str, str] = {
     "cnn_raw_waveform_v2": "CNN v2 (normalised + augmented)",
+    "cnn_cosine_schedule": "CNN (warmup + cosine schedule)",
 }
 
 TIER_LABELS: dict[str, str] = {
@@ -37,6 +38,7 @@ TIER_DESCRIPTIONS: dict[str, str] = {
     "cnn_raw_waveform": "deep learning directly on the raw 12-lead signal",
     "cnn_ecg_and_demographics": "raw 12-lead signal fused with age, sex, race and care setting",
     "cnn_raw_waveform_v2": "same architecture, per-record normalisation + augmentation",
+    "cnn_cosine_schedule": "same fused architecture, linear warmup then cosine decay",
 }
 
 # Palette keyed by tier, ordered along the information ladder; the two CNN rungs
@@ -49,6 +51,7 @@ TIER_COLORS: dict[str, str] = {
     "cnn_raw_waveform": "#E0457B",
     "cnn_ecg_and_demographics": "#7C3AED",
     "cnn_raw_waveform_v2": "#B91C5C",
+    "cnn_cosine_schedule": "#9D174D",
 }
 
 TARGET_SHORT_NAMES: dict[str, str] = {

@@ -13,7 +13,7 @@ Predicting echocardiogram-confirmed structural heart disease from 12-lead ECGs, 
 
 I predicted 12 echocardiogram-confirmed structural heart disease outcomes from 100,000 12-lead ECGs (EchoNext, PhysioNet). The targets range from a broad "any moderate-or-greater disease" flag down to specific valve and chamber findings.
 
-Six model setups were compared on the same targets and the same splits: demographics alone, demographics plus standard ECG measurements, 180 hand-crafted waveform features, both feature sets combined, a 1D CNN on the raw waveform, and that CNN with demographics fused in. Every extra layer of input improved results on held-out test data, and the fused CNN came out best (0.836 AUROC for any moderate-or-greater disease, 0.888 for reduced ejection fraction).
+Six rungs of an information ladder were compared on the same targets and the same splits: demographics alone, demographics plus standard ECG measurements, 180 hand-crafted waveform features, both feature sets combined, a 1D CNN on the raw waveform, and that CNN with demographics fused in. Every extra layer of input improved results on held-out test data, and the fused CNN came out best (0.836 AUROC for any moderate-or-greater disease, 0.888 for reduced ejection fraction).
 
 The more useful finding is that a 180-feature gradient-boosting model you can actually inspect came within 0.02 AUROC of the waveform-only CNN, and beat it on aortic stenosis. Working out why that one target behaved differently turned into the most interesting part of the project.
 
@@ -34,20 +34,23 @@ Held-out test split (5,442 ECGs, never used for training or model selection). AU
 
 Three things worth pulling out of that table.
 
-**Every extra input helps.** Going from who the patient is to what their ECG looks like is worth about 0.14 AUROC on the broad SHD target. Averaged over all 12 targets, each step up adds something: 0.658, 0.722, 0.770, 0.796, 0.811, 0.828.
+Every extra input helps. Going from who the patient is to what their ECG looks like is worth about 0.14 AUROC on the broad SHD target. Averaged over all 12 targets, each step up adds something: 0.658, 0.722, 0.770, 0.796, 0.811, 0.828.
 
-**The deep model wins by less than you might expect.** The waveform-only CNN beats the feature-based model by 0.013 to 0.023 AUROC, and on several targets their confidence intervals overlap. A gradient-boosting model over 180 interpretable features gets most of the way there.
+The deep model wins by less than you might expect. The waveform-only CNN beats the feature-based model by 0.013 to 0.023 AUROC, and on several targets their confidence intervals overlap. A gradient-boosting model over 180 interpretable features gets most of the way there.
 
-**One target went the other way, and the fix explains why.** Aortic stenosis was the exception: demographics alone (0.844) beat raw waveform features (0.757), and the feature-based model (0.870) beat the CNN (0.829). Patient age largely determines that diagnosis, and a waveform-only CNN never sees age. Feeding demographics into the CNN's classification head recovers 0.050 AUROC on that target and puts it back in front (0.879). The [demographic ablation](reports/ablation_notes.md) backs this up: removing age alone costs 0.145 AUROC there, against at most 0.02 on any other target.
+**Aortic stenosis went the other way, and chasing that down explains the rest.** Demographics alone (0.844) beat raw waveform features (0.757), and the feature-based model (0.870) beat the CNN (0.829). Patient age largely determines that diagnosis, and a waveform-only CNN never sees age. Feeding demographics into the CNN's classification head recovers 0.050 AUROC on that target and puts it back in front (0.879). The [demographic ablation](reports/ablation_notes.md) agrees: removing age alone costs 0.145 AUROC there, against at most 0.02 on any other target.
 
 ### How much of this is real
 
-Four checks, each with its own report:
+Four checks, each with its own report.
 
-- **Training variance.** Retraining the best model on 5 stratified folds gives a fold-to-fold standard deviation of 0.0025 on the SHD composite. Three of the four headline gaps clear that (aortic stenosis by 15x, SHD and LVEF by about 3x); RV dysfunction's +0.005 gap does not, and is not claimed. Rare targets are far less stable: pulmonary regurgitation has a fold std of 0.038 ([reports/kfold_summary.md](reports/kfold_summary.md)).
-- **Against a published baseline.** The dataset ships as the training data for the published EchoNext Mini-Model on the same train/val/test split, so these numbers sit on the same held-out records as a published result. On the composite target this model is at parity, with overlapping intervals, using about 0.93M parameters trained for 24 epochs on one consumer GPU. The paper's own figures could not be retrieved directly and are recorded as second-hand ([reports/benchmark_comparison.md](reports/benchmark_comparison.md)).
-- **Calibration.** Ranking is good, the probabilities are not. Brier skill score is +0.33 on the SHD composite but -0.84 for RV dysfunction and -2.41 for aortic stenosis, meaning worse than always predicting the base rate, with calibration error up to 0.27. This is a direct consequence of training with `pos_weight`, and Platt or isotonic recalibration fixes it without moving AUROC ([reports/calibration_notes.md](reports/calibration_notes.md)).
-- **Tuning.** An Optuna search over the classical models moved them by +0.002 to +0.014 AUROC, so the interpretable baseline the CNN is measured against was already near-optimal ([reports/tuning_notes.md](reports/tuning_notes.md)).
+Training variance: retraining the best model on 5 stratified folds gives a fold-to-fold standard deviation of 0.0025 on the SHD composite. Three of the four headline gaps clear that, aortic stenosis by 15x and SHD and LVEF by about 3x, but RV dysfunction's +0.005 gap does not and is not claimed. Rare targets are much less stable, with a fold std of 0.038 for pulmonary regurgitation ([reports/kfold_summary.md](reports/kfold_summary.md)).
+
+Comparison with a published baseline: the dataset ships as the training data for the published EchoNext Mini-Model on the same train/val/test split, so these numbers sit on the same held-out records as a published result. On the composite target this model reaches parity, with overlapping intervals, from about 0.93M parameters trained for 24 epochs on one consumer GPU. The paper's own figures could not be retrieved directly and are recorded as second-hand ([reports/benchmark_comparison.md](reports/benchmark_comparison.md)).
+
+Calibration: the ranking is good and the probabilities are not. Brier skill score is +0.33 on the SHD composite but -0.84 for RV dysfunction and -2.41 for aortic stenosis, which is worse than always predicting the base rate, with calibration error up to 0.27. That follows from training with `pos_weight`, and Platt or isotonic recalibration fixes it without moving AUROC ([reports/calibration_notes.md](reports/calibration_notes.md)).
+
+Tuning: an Optuna search over the classical models moved them by +0.002 to +0.014 AUROC, so the interpretable baseline the CNN is measured against was already close to its best ([reports/tuning_notes.md](reports/tuning_notes.md)).
 
 ## What the model sees
 
@@ -64,8 +67,10 @@ A positive and a negative record side by side, in the standard clinical 12-lead 
 | 3. Baseline | Demographics-only models | `scripts/3_baselines/demographic_only.py` |
 | 4. Classical ML | LogReg, RandomForest and GradientBoosting on tabular, waveform and combined features | `scripts/4_classical_ml/compare_ecg_feature_sets.py` |
 | 5. Deep learning | 1D ResNet on raw waveforms, plus variants with demographics fused in and with normalization + augmentation | `scripts/5_deep_learning/` |
-| 6. Evaluation | Held-out test set, bootstrap CIs, result figures | `scripts/6_evaluate/`, `scripts/7_figures/` |
+| 6. Evaluation | Held-out test set scored once, bootstrap CIs, result figures | `scripts/6_evaluate/evaluate_test_set.py`, `scripts/7_figures/` |
 | 7. Analysis | Saliency, lead and demographic ablation, feature importance, results site | `scripts/8_interpretability/`, `scripts/9_ablation/`, `scripts/10_site/` |
+| 8. Validation | 5-fold training variance, calibration and recalibration | `scripts/6_evaluate/kfold_cnn.py`, `calibration_analysis.py` |
+| 9. Search | Optuna over the classical models; overnight GPU stage runner | `scripts/11_tuning/`, `scripts/12_overnight/` |
 
 ## Further analyses
 
@@ -147,7 +152,15 @@ python scripts/5_deep_learning/cnn_waveforms_with_demographics.py  # best model
 python scripts/5_deep_learning/cnn_waveforms_v2.py                # normalized + augmented
 python scripts/6_evaluate/evaluate_test_set.py
 
-pytest tests -q   # 61 tests, about 2.5 min, runs on synthetic data
+# validation and analysis (each writes to reports/ and figures/)
+python scripts/6_evaluate/kfold_cnn.py            # training-variance estimate
+python scripts/6_evaluate/calibration_analysis.py # Brier, ECE, recalibration
+python scripts/7_figures/make_results_figures.py
+python scripts/8_interpretability/saliency_examples.py
+python scripts/9_ablation/lead_ablation.py
+python scripts/9_ablation/demographic_ablation.py
+
+pytest tests -q   # 127 tests, about 2 min, runs on synthetic data
 ```
 
 ## Design decisions
@@ -182,16 +195,16 @@ No external validation. Every number here is internal to the EchoNext splits.
 
 Five things were tried that were expected to improve results and did not. Each one removed a candidate explanation, which is why they are recorded here rather than dropped.
 
-**Per-record normalization and waveform augmentation.** Time shift, amplitude scaling, baseline wander and noise delayed overfitting exactly as intended, moving the best epoch from 10 to 17, but mean test AUROC came out at 0.804 against 0.811 for the unaugmented model, with every per-target interval overlapping. Regularization was not what was holding the model back ([reports/cnn_v2_notes.md](reports/cnn_v2_notes.md)).
+Per-record normalization and waveform augmentation. Time shift, amplitude scaling, baseline wander and noise delayed overfitting exactly as intended, moving the best epoch from 10 to 17, but mean test AUROC came out at 0.804 against 0.811 for the unaugmented model, with every per-target interval overlapping. Regularization was not what was holding the model back ([reports/cnn_v2_notes.md](reports/cnn_v2_notes.md)).
 
-**A longer run with warmup and cosine decay.** This one did fix a genuine problem. The fixed-LR runs were still improving at epoch 19 of 20, which looked like the epoch budget being the ceiling; with a proper schedule the model peaks at epoch 12 and then declines for 12 straight epochs, so the budget was never the constraint. It still produced no better model: scored once on test, no per-target change against the previous best exceeds 2 fold standard deviations, so every apparent gain and loss sits inside training noise. Without the fold-variance estimate this would have been written up as a +0.009 gain on RV dysfunction ([reports/serial_notes.md](reports/serial_notes.md)).
+A longer run with warmup and cosine decay. This one did fix a real problem. The fixed-LR runs were still improving at epoch 19 of 20, which looked like the epoch budget being the ceiling. With a proper schedule the model peaks at epoch 12 and then declines for 12 straight epochs, so the budget was never the constraint. It still produced no better model: scored once on test, no per-target change against the previous best exceeds 2 fold standard deviations, so every apparent gain and loss sits inside training noise. Without the fold-variance estimate, the +0.009 on RV dysfunction would have been written up as an improvement ([reports/serial_notes.md](reports/serial_notes.md)).
 
-**Warm-started tuning of the late-training phase.** Resuming from a checkpoint and searching over LR tail, weight decay and dropout beat its own control arm by +0.005, but both sat well below the peak the long run had already reached. The reason is a design mistake worth recording: the warm-start point was a fixed 3/4 of the epochs, which landed at epoch 18, already past the epoch-12 peak. It should have resumed from the best checkpoint.
+Warm-started tuning of the late-training phase. Resuming from a checkpoint and searching over LR tail, weight decay and dropout beat its own control arm by +0.005, but both sat well below the peak the long run had already reached. The cause was a design mistake worth recording: the warm-start point was a fixed 3/4 of the epochs, which landed at epoch 18, already past the epoch-12 peak. It should have resumed from the best checkpoint.
 
-**Tuning the classical models.** Two hundred trials bought +0.002 to +0.014 AUROC. Disappointing as an improvement, useful as evidence: the CNN-versus-interpretable-model comparison was never resting on an unfairly untuned baseline.
+Tuning the classical models. Two hundred trials bought +0.002 to +0.014 AUROC. That is a poor improvement and useful evidence, because it means the comparison between the CNN and the interpretable model was never resting on an unfairly untuned baseline.
 
-**Giving the model age to close the age-band gap.** AUROC for patients 80 and over is 0.764 against 0.845 for 50 to 65. Adding age as an input does not close it, because 64% of that age band is positive and age has little left to separate on within it. Higher average accuracy and more even accuracy are different objectives.
+Adding age as an input to close the age-band gap. AUROC for patients 80 and over is 0.764 against 0.845 for 50 to 65. Giving the model age does not close it, because 64% of that age band is positive and age has little left to separate on within it. Higher average accuracy and more even accuracy are different objectives.
 
-Two suspicions also failed to materialize, which is worth as much as a result. Zeroing race/ethnicity moves mean AUROC by -0.002 and care setting by -0.003, both with intervals spanning zero, so neither is load-bearing; the concern that care setting was standing in for "this patient is already known to be unwell" does not hold up. And a check of the `patient_key` column confirmed the official train, validation and test splits share no patients, so the results are not inflated by a model recognising a patient it had already seen.
+Two things I expected to find and did not. Zeroing race/ethnicity moves mean AUROC by -0.002 and care setting by -0.003, both with intervals spanning zero, so neither input carries much weight, and the concern that care setting was standing in for "this patient is already known to be unwell" does not hold up. A check of the `patient_key` column also confirmed that the official train, validation and test splits share no patients, so the results are not inflated by a model recognising someone it had already seen.
 
-Taken together these narrow the explanation for the ~0.83 ceiling. Learning rate, schedule, regularization, augmentation and classical hyperparameters are all ruled out. What remains is label noise from echo-derived targets, the limits of what 10 seconds of ECG encodes about cardiac structure, and model capacity that this hardware cannot reach. The elimination sweep did turn up one concrete lead: every surviving learning rate fell between 1.5e-4 and 3.6e-4, while the hand-picked 1e-3 sits outside that band, and a 5-epoch run inside it came within 0.002 of the 24-epoch run.
+Together these narrow the explanation for the ceiling around 0.83. Learning rate, schedule, regularization, augmentation and classical hyperparameters are all ruled out. What remains is label noise from echo-derived targets, the limits of what 10 seconds of ECG encodes about cardiac structure, and model capacity this hardware cannot reach. The elimination sweep did turn up one concrete lead: every surviving learning rate fell between 1.5e-4 and 3.6e-4, while the hand-picked 1e-3 sits outside that band, and a 5-epoch run inside it came within 0.002 of the 24-epoch run.

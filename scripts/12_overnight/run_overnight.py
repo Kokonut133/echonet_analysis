@@ -74,7 +74,7 @@ from src.constants import DATASET_SUBDIR, METADATA_FILENAME, N_LEADS, TARGET_LAB
 from src.crossval import DEFAULT_STRATIFY_COL
 from src.dataset import ECGDataset, load_split
 from src.models import ECGConvNet
-from src.night_training import (
+from src.overnight_training import (
     ELIMINATION_SPACE,
     STAGE_NAMES,
     WARMSTART_SPACE,
@@ -764,7 +764,7 @@ def stage_entry_final_eval(args: argparse.Namespace) -> int:
         f"(source={source}, val SHD AUROC={shd_val:.4f}, tag=cnn_serial) — "
         "this is the only test-split use in this whole run, done once.")
     cmd = [
-        sys.executable, "-u", str(PROJECT_ROOT / "scripts" / "12_overnight" / "run_final_eval.py"),
+        sys.executable, "-u", str(PROJECT_ROOT / "scripts" / "6_evaluate" / "evaluate_test_set.py"),
         "--checkpoint", str(checkpoint_path), "--tag", "cnn_serial",
     ]
     result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))

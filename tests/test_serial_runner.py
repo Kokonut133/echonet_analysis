@@ -1,5 +1,5 @@
 """Tests for the serial, crash-resilient stage runner (agent SERIAL,
-2026-09-23): `src/night_training.py` primitives + the orchestrator in
+2026-09-23): `src/overnight_training.py` primitives + the orchestrator in
 `scripts/12_overnight/run_overnight.py`.
 
 Everything here is fast and CPU-only / no real dataset — the one real GPU
@@ -19,7 +19,7 @@ import pytest
 import torch
 
 from src.models import ECGConvNet
-from src.night_training import (
+from src.overnight_training import (
     ResumableLongrunTrainer,
     STAGE_NAMES,
     budget_exceeded,
