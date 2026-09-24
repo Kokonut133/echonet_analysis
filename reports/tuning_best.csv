@@ -1,0 +1,9 @@
+target,model,best_params_json,val_auroc,baseline_val_auroc,delta
+shd_moderate_or_greater_flag,HistGradientBoostingClassifier,"{""learning_rate"": 0.04345454109729477, ""max_iter"": 181, ""max_leaf_nodes"": 81, ""min_samples_leaf"": 32, ""l2_regularization"": 4.258943089524393e-06, ""max_bins"": 114}",0.8121,0.809,0.0031
+shd_moderate_or_greater_flag,LogisticRegression,"{""C"": 62.57946961968942, ""penalty_solver"": ""l2_lbfgs"", ""class_weight"": null}",0.7952,0.7939,0.0013
+lvef_lte_45_flag,HistGradientBoostingClassifier,"{""learning_rate"": 0.03805495636530905, ""max_iter"": 462, ""max_leaf_nodes"": 112, ""min_samples_leaf"": 138, ""l2_regularization"": 1.998003501906028e-07, ""max_bins"": 109}",0.8632,0.8612,0.002
+lvef_lte_45_flag,LogisticRegression,"{""C"": 7.812113973534931, ""penalty_solver"": ""l1_liblinear"", ""class_weight"": ""balanced""}",0.8452,0.8415,0.0037
+rv_systolic_dysfunction_moderate_or_greater_flag,HistGradientBoostingClassifier,"{""learning_rate"": 0.012184186502221764, ""max_iter"": 440, ""max_leaf_nodes"": 79, ""min_samples_leaf"": 143, ""l2_regularization"": 1.5320059381854043e-08, ""max_bins"": 249}",0.8627,0.8563,0.0064
+rv_systolic_dysfunction_moderate_or_greater_flag,LogisticRegression,"{""C"": 7.812113973534931, ""penalty_solver"": ""l1_liblinear"", ""class_weight"": ""balanced""}",0.8379,0.8363,0.0016
+aortic_stenosis_moderate_or_greater_flag,HistGradientBoostingClassifier,"{""learning_rate"": 0.028180680291847244, ""max_iter"": 94, ""max_leaf_nodes"": 89, ""min_samples_leaf"": 91, ""l2_regularization"": 1.254134495897175e-07, ""max_bins"": 142}",0.8609,0.8471,0.0138
+aortic_stenosis_moderate_or_greater_flag,LogisticRegression,"{""C"": 0.4042872735027334, ""penalty_solver"": ""l1_liblinear"", ""class_weight"": ""balanced""}",0.8624,0.8631,-0.0007

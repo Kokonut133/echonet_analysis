@@ -10,3 +10,4 @@ torchvision
 pytest>=8.0.0
 pyarrow
 tabulate
+optuna==5.0.0
